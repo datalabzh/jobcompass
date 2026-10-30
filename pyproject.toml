@@ -1,0 +1,16 @@
+[project]
+name = "jobcompass"
+version = "0.1.0"
+description = "Skill-cluster analysis of the Swiss Romandy job market"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv.workspace]
+members = []
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
