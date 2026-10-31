@@ -1,8 +1,17 @@
+"""
+test_contracts.py
+
+Description : tests of the DiscoveredOffer and RawOffer contracts.
+Rules       : covers valid records, rejected values (naive dates, bad hash,
+              unknown field) and the JSON round trip.
+"""
+
 from datetime import datetime, timezone
 
 import pytest
-from jobcompass_contracts import DiscoveredOffer, DiscoveryMethod, RawOffer
 from pydantic import ValidationError
+
+from jobcompass_contracts import DiscoveredOffer, DiscoveryMethod, RawOffer
 
 NOW = datetime(2026, 10, 31, 12, 0, tzinfo=timezone.utc)
 URL = "https://www.jobup.ch/fr/emplois/detail/6fa1cc88-7f8c-4806-ba04-d4369180c2e4/"

@@ -46,7 +46,7 @@
       "additionalProperties": {
         "type": "string"
       },
-      "description": "Parameters of the discovery, e.g. {'category': '702', 'page': '3'}",
+      "description": "Parameters of the discovery e.g. {'category': '702', 'page': '3'}",
       "title": "Discovery Params",
       "type": "object"
     }

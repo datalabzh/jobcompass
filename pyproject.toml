@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["contracts"]
+members = ["contracts", "ingestion"]
 
 [tool.ruff]
 line-length = 88
@@ -14,3 +14,6 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["jobcompass_contracts", "jobcompass_ingestion"]
