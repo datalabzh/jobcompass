@@ -20,5 +20,5 @@ class DiscoveredOffer(ContractModel):
     discovery_method: DiscoveryMethod
     discovery_params: dict[str, str] = Field(
         default_factory=dict,
-        description="Parameters of the discovery, e.g. {'category': '702', 'page': '3'}",
+        description="Parameters of the discovery e.g. {'category': '702', 'page': '3'}",
     )

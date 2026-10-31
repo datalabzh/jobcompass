@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
 
 import pytest
-from pydantic import ValidationError
-
 from jobcompass_contracts import DiscoveredOffer, DiscoveryMethod, RawOffer
+from pydantic import ValidationError
 
 NOW = datetime(2026, 10, 31, 12, 0, tzinfo=timezone.utc)
 URL = "https://www.jobup.ch/fr/emplois/detail/6fa1cc88-7f8c-4806-ba04-d4369180c2e4/"
