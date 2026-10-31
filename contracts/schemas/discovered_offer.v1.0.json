@@ -1,0 +1,62 @@
+{
+  "$defs": {
+    "DiscoveryMethod": {
+      "description": "How an offer URL was discovered on a portal.",
+      "enum": [
+        "listing",
+        "sitemap",
+        "new_offers",
+        "keyword"
+      ],
+      "title": "DiscoveryMethod",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "An offer URL found on a portal, not yet fetched.\n\nProduced by the ingestion discovery step; consumed by the fetch step.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "description": "Portal slug, e.g. 'jobup'",
+      "pattern": "^[a-z0-9_]+$",
+      "title": "Source",
+      "type": "string"
+    },
+    "url": {
+      "description": "Normalized offer URL",
+      "pattern": "^https?://\\S+$",
+      "title": "Url",
+      "type": "string"
+    },
+    "discovered_at": {
+      "description": "Discovery time (timezone-aware)",
+      "format": "date-time",
+      "title": "Discovered At",
+      "type": "string"
+    },
+    "discovery_method": {
+      "$ref": "#/$defs/DiscoveryMethod"
+    },
+    "discovery_params": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Parameters of the discovery, e.g. {'category': '702', 'page': '3'}",
+      "title": "Discovery Params",
+      "type": "object"
+    }
+  },
+  "required": [
+    "source",
+    "url",
+    "discovered_at",
+    "discovery_method"
+  ],
+  "title": "DiscoveredOffer",
+  "type": "object"
+}
