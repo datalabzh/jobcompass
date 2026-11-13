@@ -1,0 +1,10 @@
+# Scope of the collection, per site (one table per scraper name).
+# categories                  = result page categories to read (URL slugs).
+# min_delay_between_requests  = politeness towards the site, in seconds.
+# Add a category = add a line.
+
+[jobup]
+categories = [
+    "informatique-telecommunications",
+]
+min_delay_between_requests = 1.0

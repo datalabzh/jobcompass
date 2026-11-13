@@ -11,22 +11,31 @@ Rules       : the Pydantic classes are the source of truth, the JSON Schema file
 import json
 from pathlib import Path
 
-from jobcompass_contracts import DiscoveredOffer, DiscoverySnapshot, RawOffer
+from pydantic import BaseModel
 
-SCHEMAS_DIR = Path(__file__).resolve().parents[1] / "schemas"
-CONTRACTS = {
-    "discovered_offer": DiscoveredOffer,
-    "discovery_snapshot": DiscoverySnapshot,
-    "raw_offer": RawOffer,
+from contracts import (
+    JobDetail,
+    JobDetailExtractionLog,
+    JobInfo,
+    JobInfoExtractionLog,
+)
+
+SCHEMAS_DIR: Path = Path(__file__).resolve().parents[1] / "schemas"
+CONTRACTS: dict[str, type[BaseModel]] = {
+    "job_info": JobInfo,
+    "job_info_extraction_log": JobInfoExtractionLog,
+    "job_detail": JobDetail,
+    "job_detail_extraction_log": JobDetailExtractionLog,
 }
 
 
 def main() -> None:
+    """Write the JSON Schema of every contract into contracts/schemas/."""
     SCHEMAS_DIR.mkdir(exist_ok=True)
     for name, model in CONTRACTS.items():
-        version = model.model_fields["schema_version"].default
-        path = SCHEMAS_DIR / f"{name}.v{version}.json"
-        schema = model.model_json_schema()
+        version: str = model.model_fields["schema_version"].default
+        path: Path = SCHEMAS_DIR / f"{name}.v{version}.json"
+        schema: dict[str, object] = model.model_json_schema()
         path.write_text(json.dumps(schema, indent=2, ensure_ascii=False) + "\n")
         print(f"written {path.name}")
 

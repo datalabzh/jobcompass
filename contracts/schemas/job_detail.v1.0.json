@@ -1,0 +1,62 @@
+{
+  "additionalProperties": false,
+  "description": "One job detail page downloaded with success.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "description": "Portal slug, e.g. 'jobup'",
+      "pattern": "^[a-z0-9_]+$",
+      "title": "Source",
+      "type": "string"
+    },
+    "url": {
+      "description": "URL of the job detail page",
+      "pattern": "^https?://\\S+$",
+      "title": "Url",
+      "type": "string"
+    },
+    "raw_hash": {
+      "description": "SHA-256 of the uncompressed content",
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Raw Hash",
+      "type": "string"
+    },
+    "content_type": {
+      "description": "Content-Type of the answer",
+      "title": "Content Type",
+      "type": "string"
+    },
+    "fetched_at": {
+      "format": "date-time",
+      "title": "Fetched At",
+      "type": "string"
+    },
+    "http_status": {
+      "maximum": 299,
+      "minimum": 200,
+      "title": "Http Status",
+      "type": "integer"
+    },
+    "scraper_version": {
+      "description": "Version of the code that fetched it",
+      "title": "Scraper Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "url",
+    "raw_hash",
+    "content_type",
+    "fetched_at",
+    "http_status",
+    "scraper_version"
+  ],
+  "title": "JobDetail",
+  "type": "object"
+}

@@ -1,0 +1,42 @@
+{
+  "additionalProperties": false,
+  "description": "One failed download of a job detail page.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "description": "Portal slug, e.g. 'jobup'",
+      "pattern": "^[a-z0-9_]+$",
+      "title": "Source",
+      "type": "string"
+    },
+    "url": {
+      "description": "URL of the job detail page",
+      "pattern": "^https?://\\S+$",
+      "title": "Url",
+      "type": "string"
+    },
+    "attempted_at": {
+      "format": "date-time",
+      "title": "Attempted At",
+      "type": "string"
+    },
+    "error": {
+      "description": "Short reason of the failure",
+      "title": "Error",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "url",
+    "attempted_at",
+    "error"
+  ],
+  "title": "JobDetailExtractionLog",
+  "type": "object"
+}
