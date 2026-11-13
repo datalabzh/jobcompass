@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "jobcompass-contracts",
     "pydantic-settings>=2.6",
-    "dependency-injector>=4.46",
+    "pyarrow>=18",
 ]
 
 [dependency-groups]

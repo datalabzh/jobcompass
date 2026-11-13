@@ -4,10 +4,13 @@ config.py
 Description : settings of the ingestion brick.
 Rules       : read from environment variables prefixed INGESTION_ (or a .env file),
               default values otherwise.
-              Values are validated at startup: a wrong setting stops the brick
-              before any request is sent.
-              MAX_FETCH_FAILURES = failed attempts before an URL is set aside.
+              Validated at startup: a wrong setting stops the brick before any
+              request is sent.
+              data_dir = root folder of all ingestion datasets.
+              max_fetch_failures = failed attempts before an URL is set aside.
 """
+
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,6 +21,7 @@ class IngestionSettings(BaseSettings):
         env_prefix="INGESTION_", env_file=".env", extra="ignore"
     )
 
+    data_dir: Path = Path("data")
     max_fetch_failures: int = Field(default=3, ge=1)
     fetch_max_concurrency: int = Field(default=4, ge=1)
     fetch_batch_size: int = Field(default=50, ge=1)
