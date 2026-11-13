@@ -1,0 +1,98 @@
+{
+  "$defs": {
+    "DiscoveryMethod": {
+      "description": "How an offer URL was discovered on a portal.",
+      "enum": [
+        "listing",
+        "sitemap",
+        "new_offers",
+        "keyword"
+      ],
+      "title": "DiscoveryMethod",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A completed discovery run of a portal.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "snapshot_id": {
+      "description": "Id of the discovery run (UUID)",
+      "title": "Snapshot Id",
+      "type": "string"
+    },
+    "source": {
+      "description": "Portal slug, e.g. 'jobup'",
+      "pattern": "^[a-z0-9_]+$",
+      "title": "Source",
+      "type": "string"
+    },
+    "discovery_method": {
+      "$ref": "#/$defs/DiscoveryMethod"
+    },
+    "discovery_params": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Discovery Params",
+      "type": "object"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "finished_at": {
+      "format": "date-time",
+      "title": "Finished At",
+      "type": "string"
+    },
+    "announced_total": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Total of offers announced by the portal",
+      "title": "Announced Total"
+    },
+    "pages_read": {
+      "minimum": 0,
+      "title": "Pages Read",
+      "type": "integer"
+    },
+    "offers_seen": {
+      "description": "Lines written, duplicates included",
+      "minimum": 0,
+      "title": "Offers Seen",
+      "type": "integer"
+    },
+    "distinct_urls": {
+      "minimum": 0,
+      "title": "Distinct Urls",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "snapshot_id",
+    "source",
+    "discovery_method",
+    "started_at",
+    "finished_at",
+    "pages_read",
+    "offers_seen",
+    "distinct_urls"
+  ],
+  "title": "DiscoverySnapshot",
+  "type": "object"
+}

@@ -2,60 +2,89 @@
 test_discover.py
 
 Description : tests of the discovery step.
-Rules       : every observation is written, known URLs included; the discovery
-              context is kept in discovery_params.
+Rules       : every page is read and loaded as is; the snapshot record is written
+              last and only when every page was read; a failing page leaves the
+              pages already read but no snapshot record.
 """
 
+import json
+
+import pyarrow.parquet as pq
+import pytest
 from conftest import NOW
 
-from jobcompass_contracts import DiscoveryMethod
-from jobcompass_ingestion.discover import discover_offers
+from jobcompass_ingestion.discover import ListingPage, discover_offers
 
-A = "https://www.jobup.ch/a"
-B = "https://www.jobup.ch/b"
-
-
-def finder(found):
-    async def find_offer_urls(method, params):
-        return list(found)
-
-    return find_offer_urls
+A = "https://www.jobup.ch/fr/emplois/detail/a/"
+B = "https://www.jobup.ch/fr/emplois/detail/b/"
+C = "https://www.jobup.ch/fr/emplois/detail/c/"
 
 
-async def run(found, store):
+def offer(url):
+    return (url, json.dumps({"url": url}))
+
+
+def reader(pages, fail_on=None):
+    """pages = list of offer lists, page 1 first."""
+
+    async def read_page(number):
+        if number == fail_on:
+            raise RuntimeError("blocked")
+        return ListingPage(
+            announced_total=3, num_pages=len(pages), offers=pages[number - 1]
+        )
+
+    return read_page
+
+
+async def run(read_page, store):
     return await discover_offers(
         source="jobup",
-        method=DiscoveryMethod.LISTING,
-        params={"category": "702"},
-        find_offer_urls=finder(found),
+        params={"category": "informatique-telecommunications"},
+        read_page=read_page,
         store=store,
         now=lambda: NOW,
     )
 
 
-async def test_every_observation_written(store):
-    found = [(A, {"page": "1"}), (B, {"page": "1"}), (A, {"page": "2"})]
-
-    summary = await run(found, store)
-
-    assert (summary.observed, summary.distinct_urls) == (3, 2)
-    assert len(store.discovered_keys("jobup")) == 3
+def read_dataset(tmp_path, name):
+    files = sorted((tmp_path / name).rglob("*.parquet"))
+    return [row for f in files for row in pq.read_table(f).to_pylist()]
 
 
-async def test_known_urls_written_again_on_next_run(store):
-    await run([(A, {})], store)
-    await run([(A, {})], store)
+async def test_every_page_loaded_then_snapshot(store, tmp_path):
+    pages = [[offer(A), offer(B)], [offer(B), offer(C)]]
 
-    assert store.discovered_keys("jobup") == [("jobup", A), ("jobup", A)]
+    snapshot = await run(reader(pages), store)
+
+    rows = read_dataset(tmp_path, "discovered")
+    assert len(rows) == 4
+    assert {r["snapshot_id"] for r in rows} == {snapshot.snapshot_id}
+    assert json.loads(rows[0]["listing_payload"]) == {"url": A}
+    assert (snapshot.pages_read, snapshot.offers_seen, snapshot.distinct_urls) == (
+        2,
+        4,
+        3,
+    )
+    assert snapshot.announced_total == 3
+    assert read_dataset(tmp_path, "discovery_snapshot")[0]["snapshot_id"] == (
+        snapshot.snapshot_id
+    )
 
 
-async def test_run_context_kept(store, tmp_path):
-    import pyarrow.parquet as pq
+async def test_failing_page_keeps_read_pages_but_no_snapshot(store, tmp_path):
+    pages = [[offer(A)], [offer(B)], [offer(C)]]
 
-    await run([(A, {"page": "3"})], store)
+    with pytest.raises(RuntimeError):
+        await run(reader(pages, fail_on=3), store)
 
-    table = pq.read_table(next((tmp_path / "discovered").rglob("*.parquet")))
-    row = table.to_pylist()[0]
-    assert row["discovered_at"] == NOW
-    assert row["discovery_method"] == "listing"
-    assert dict(row["discovery_params"]) == {"category": "702", "page": "3"}
+    assert len(read_dataset(tmp_path, "discovered")) == 2
+    assert read_dataset(tmp_path, "discovery_snapshot") == []
+
+
+async def test_each_run_is_a_new_snapshot(store, tmp_path):
+    first = await run(reader([[offer(A)]]), store)
+    second = await run(reader([[offer(A)]]), store)
+
+    assert first.snapshot_id != second.snapshot_id
+    assert len(read_dataset(tmp_path, "discovered")) == 2

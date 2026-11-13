@@ -2,10 +2,11 @@
 storage.py
 
 Description : the datasets of the ingestion brick, and the raw content storage.
-Rules       : three datasets, append only, a written line is never modified:
-                discovered/      DiscoveredOffer, one line per observation
-                raw/manifest/    RawOffer, one line per successful fetch
-                fetch_attempts/  FetchAttempt, one line per failed fetch
+Rules       : four datasets, append only, a written line is never modified:
+                discovered/          DiscoveredOffer, one line per observation
+                discovery_snapshot/  DiscoverySnapshot, one line per completed run
+                raw/manifest/        RawOffer, one line per successful fetch
+                fetch_attempts/      FetchAttempt, one line per failed fetch
               Each append writes a new file:
                 <dataset>/source=<source>/date=<UTC date>/part-<time>-<id>.parquet
               Explicit Parquet schemas, so every file of a dataset has the same types.
@@ -25,7 +26,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from jobcompass_contracts import DiscoveredOffer, RawOffer
+from jobcompass_contracts import DiscoveredOffer, DiscoverySnapshot, RawOffer
 
 OfferKey = tuple[str, str]  # (source, url): identifies an offer
 
@@ -46,14 +47,34 @@ class FetchAttempt:
 
 _TIMESTAMP = pa.timestamp("us", tz="UTC")
 
+_PARAMS = pa.map_(pa.string(), pa.string())
+
 DISCOVERED_SCHEMA = pa.schema(
     [
         ("schema_version", pa.string()),
+        ("snapshot_id", pa.string()),
         ("source", pa.string()),
         ("url", pa.string()),
         ("discovered_at", _TIMESTAMP),
         ("discovery_method", pa.string()),
-        ("discovery_params", pa.map_(pa.string(), pa.string())),
+        ("discovery_params", _PARAMS),
+        ("listing_payload", pa.string()),
+    ]
+)
+
+DISCOVERY_SNAPSHOT_SCHEMA = pa.schema(
+    [
+        ("schema_version", pa.string()),
+        ("snapshot_id", pa.string()),
+        ("source", pa.string()),
+        ("discovery_method", pa.string()),
+        ("discovery_params", _PARAMS),
+        ("started_at", _TIMESTAMP),
+        ("finished_at", _TIMESTAMP),
+        ("announced_total", pa.int64()),
+        ("pages_read", pa.int64()),
+        ("offers_seen", pa.int64()),
+        ("distinct_urls", pa.int64()),
     ]
 )
 
@@ -88,10 +109,10 @@ class Store:
     # --- writes -------------------------------------------------------------
 
     def append_discovered(self, offers: Sequence[DiscoveredOffer]) -> None:
-        rows = [o.model_dump() for o in offers]
-        for row in rows:
-            row["discovery_params"] = list(row["discovery_params"].items())
-        self._append("discovered", DISCOVERED_SCHEMA, rows)
+        self._append("discovered", DISCOVERED_SCHEMA, _rows(offers))
+
+    def append_discovery_snapshot(self, snapshot: DiscoverySnapshot) -> None:
+        self._append("discovery_snapshot", DISCOVERY_SNAPSHOT_SCHEMA, _rows([snapshot]))
 
     def append_raw_offers(self, raw_offers: Sequence[RawOffer]) -> None:
         self._append(
@@ -168,3 +189,11 @@ class Store:
 
     def _content_path(self, raw_hash: str) -> Path:
         return self.data_dir / "raw" / "html" / f"{raw_hash}.html"
+
+
+def _rows(records: Sequence[DiscoveredOffer | DiscoverySnapshot]) -> list[dict]:
+    """Contract records as Parquet rows: discovery_params as a map."""
+    rows = [r.model_dump() for r in records]
+    for row in rows:
+        row["discovery_params"] = list(row["discovery_params"].items())
+    return rows

@@ -24,18 +24,21 @@ def test_discovered_read_back_in_discovery_order(store):
     assert store.discovered_keys("jobup") == [("jobup", A), ("jobup", B), ("jobup", B)]
 
 
-def test_discovery_params_kept(store, tmp_path):
+def test_discovered_written_as_is(store, tmp_path):
     import pyarrow.parquet as pq
 
-    offer = discovered(A)[0].model_copy(update={"discovery_params": {"page": "3"}})
+    offer = discovered(A)[0].model_copy(
+        update={"discovery_params": {"category": "x"}, "listing_payload": '{"a": 1}'}
+    )
     store.append_discovered([offer])
 
     files = list((tmp_path / "discovered" / "source=jobup").rglob("part-*.parquet"))
     assert len(files) == 1
     assert files[0].parent.name.startswith("date=")
-    assert pq.read_table(files[0]).column("discovery_params").to_pylist() == [
-        [("page", "3")]
-    ]
+    row = pq.read_table(files[0]).to_pylist()[0]
+    assert row["discovery_params"] == [("category", "x")]
+    assert row["listing_payload"] == '{"a": 1}'
+    assert row["snapshot_id"] == "s1"
 
 
 def test_fetched_keys(store):

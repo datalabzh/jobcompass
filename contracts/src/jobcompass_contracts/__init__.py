@@ -11,6 +11,13 @@ Rules       : bricks import only from here (from jobcompass_contracts import ...
 from jobcompass_contracts.building_blocks.enums import DiscoveryMethod
 from jobcompass_contracts.building_blocks.raw_content_hash import compute_raw_hash
 from jobcompass_contracts.offers.discovered_offer import DiscoveredOffer
+from jobcompass_contracts.offers.discovery_snapshot import DiscoverySnapshot
 from jobcompass_contracts.offers.raw_offer import RawOffer
 
-__all__ = ["DiscoveredOffer", "DiscoveryMethod", "RawOffer", "compute_raw_hash"]
+__all__ = [
+    "DiscoveredOffer",
+    "DiscoveryMethod",
+    "DiscoverySnapshot",
+    "RawOffer",
+    "compute_raw_hash",
+]

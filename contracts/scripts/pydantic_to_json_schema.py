@@ -11,10 +11,14 @@ Rules       : the Pydantic classes are the source of truth, the JSON Schema file
 import json
 from pathlib import Path
 
-from jobcompass_contracts import DiscoveredOffer, RawOffer
+from jobcompass_contracts import DiscoveredOffer, DiscoverySnapshot, RawOffer
 
 SCHEMAS_DIR = Path(__file__).resolve().parents[1] / "schemas"
-CONTRACTS = {"discovered_offer": DiscoveredOffer, "raw_offer": RawOffer}
+CONTRACTS = {
+    "discovered_offer": DiscoveredOffer,
+    "discovery_snapshot": DiscoverySnapshot,
+    "raw_offer": RawOffer,
+}
 
 
 def main() -> None:

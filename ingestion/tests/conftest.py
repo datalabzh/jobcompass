@@ -25,7 +25,11 @@ def store(tmp_path):
 def discovered(*urls, source="jobup", at=NOW):
     return [
         DiscoveredOffer(
-            source=source, url=url, discovered_at=at, discovery_method="listing"
+            snapshot_id="s1",
+            source=source,
+            url=url,
+            discovered_at=at,
+            discovery_method="listing",
         )
         for url in urls
     ]
