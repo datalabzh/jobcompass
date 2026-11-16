@@ -23,8 +23,8 @@ from extraction.config import (
 )
 from extraction.interfaces.i_job_details_extractor import IJobDetailsExtractor
 from extraction.interfaces.i_job_infos_extractor import IJobInfosExtractor
-from extraction.interfaces.i_storage import IStorage
 from extraction.jobup.jobup_job_infos import JobupJobInfos
+from storage import IStorage
 
 JOBUP: str = """
 [jobup]

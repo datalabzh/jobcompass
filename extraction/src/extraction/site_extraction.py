@@ -39,8 +39,9 @@ from extraction.interfaces.i_job_infos_extractor import (
     IJobInfosExtractor,
     JobInfoPage,
 )
-from extraction.interfaces.i_storage import IStorage, Table
+from extraction.tables import Table
 from interfaces import IUseCase
+from storage import IStorage
 
 
 @dataclass(frozen=True)

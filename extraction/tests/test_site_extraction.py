@@ -20,9 +20,9 @@ from conftest import FakeJobDetails, FakeJobInfos, fixed_now, save_seen
 from contracts import JobDetailExtractionLog, RunStatus
 from extraction.contract_checks import ContractViolationError
 from extraction.interfaces.i_job_infos_extractor import JobInfoPage
-from extraction.interfaces.i_storage import IStorage, Table
 from extraction.site_extraction import ExtractionReport, SiteExtraction
-from extraction.storage.local_parquet_storage import LocalParquetStorage
+from extraction.tables import Table
+from storage import IStorage, LocalParquetStorage
 
 A: str = "https://fake.ch/a"
 B: str = "https://fake.ch/b"

@@ -25,8 +25,8 @@ from extraction.interfaces.i_job_infos_extractor import (
     JobInfoPage,
     ListingError,
 )
-from extraction.interfaces.i_storage import Table
-from extraction.storage.local_parquet_storage import LocalParquetStorage
+from extraction.tables import Table
+from storage import LocalParquetStorage
 
 NOW: datetime = datetime(2026, 11, 16, 6, 0, tzinfo=UTC)
 

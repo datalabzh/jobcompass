@@ -39,8 +39,8 @@ from extraction.config import (
 from extraction.http import GetPage, make_get_page
 from extraction.interfaces.i_job_details_extractor import IJobDetailsExtractor
 from extraction.interfaces.i_job_infos_extractor import IJobInfosExtractor
-from extraction.interfaces.i_storage import IStorage
 from extraction.site_extraction import ExtractionReport, SiteExtraction
+from storage import IStorage
 
 
 @dataclass(frozen=True)

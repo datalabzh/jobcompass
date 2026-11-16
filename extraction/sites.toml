@@ -3,7 +3,7 @@
 #
 # job_infos    = classe qui lit les pages de résultats (IJobInfosExtractor)
 # job_details  = classe qui télécharge les pages de détail (IJobDetailsExtractor)
-# storage      = classe qui stocke les données (IStorage)
+# storage      = classe qui stocke les données (IStorage, brique storage partagée)
 #                format "module:Classe" ; storage_options = ses paramètres
 # categories   = catégories à lire (slugs d'URL) ; ajouter une catégorie = une ligne
 # min_delay_between_requests = politesse envers le site, en secondes
@@ -14,7 +14,7 @@
 [jobup]
 job_infos = "extraction.jobup.jobup_job_infos:JobupJobInfos"
 job_details = "extraction.jobup.jobup_job_details:JobupJobDetails"
-storage = "extraction.storage.local_parquet_storage:LocalParquetStorage"
+storage = "storage:LocalParquetStorage"
 storage_options = { data_dir = "data" }
 categories = [
     "informatique-telecommunications",

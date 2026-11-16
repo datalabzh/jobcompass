@@ -8,6 +8,7 @@ members = [
     "jobcompass-common",
     "jobcompass-contracts",
     "jobcompass-extraction",
+    "jobcompass-storage",
 ]
 
 [[package]]
@@ -162,7 +163,7 @@ dependencies = [
     { name = "httpx" },
     { name = "jobcompass-common" },
     { name = "jobcompass-contracts" },
-    { name = "pyarrow" },
+    { name = "jobcompass-storage" },
     { name = "pydantic-settings" },
 ]
 
@@ -176,8 +177,33 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "jobcompass-common", editable = "common" },
     { name = "jobcompass-contracts", editable = "contracts" },
-    { name = "pyarrow", specifier = ">=18" },
+    { name = "jobcompass-storage", editable = "storage" },
     { name = "pydantic-settings", specifier = ">=2.6" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8" }]
+
+[[package]]
+name = "jobcompass-storage"
+version = "0.1.0"
+source = { editable = "storage" }
+dependencies = [
+    { name = "jobcompass-contracts" },
+    { name = "pyarrow" },
+    { name = "pydantic" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "jobcompass-contracts", editable = "contracts" },
+    { name = "pyarrow", specifier = ">=18" },
+    { name = "pydantic", specifier = ">=2.10" },
 ]
 
 [package.metadata.requires-dev]
