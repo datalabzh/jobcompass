@@ -1,0 +1,24 @@
+# Les sites à extraire : une section par site, nommée par son slug (ex. jobup).
+# La commande ne reçoit que ce nom : tout le reste se règle ici.
+#
+# job_infos    = classe qui lit les pages de résultats (IJobInfosExtractor)
+# job_details  = classe qui télécharge les pages de détail (IJobDetailsExtractor)
+# storage      = classe qui stocke les données (IStorage)
+#                format "module:Classe" ; storage_options = ses paramètres
+# categories   = catégories à lire (slugs d'URL) ; ajouter une catégorie = une ligne
+# min_delay_between_requests = politesse envers le site, en secondes
+# max_pages    = garde-fou : pages de résultats lues par catégorie (passage de test)
+# max_jobs     = garde-fou : pages de détail téléchargées (passage de test)
+#                Sans option, la commande respecte ces limites ; --full les lève.
+
+[jobup]
+job_infos = "extraction.jobup.jobup_job_infos:JobupJobInfos"
+job_details = "extraction.jobup.jobup_job_details:JobupJobDetails"
+storage = "extraction.storage.local_parquet_storage:LocalParquetStorage"
+storage_options = { data_dir = "data" }
+categories = [
+    "informatique-telecommunications",
+]
+min_delay_between_requests = 1.0
+max_pages = 1
+max_jobs = 2

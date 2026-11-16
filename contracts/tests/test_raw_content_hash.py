@@ -1,9 +1,9 @@
 """
 test_raw_content_hash.py
 
-Description : tests of the raw_hash computation.
-Rules       : the hash is stable, depends only on the content, and is accepted by
-              the JobDetail contract.
+Description : tests du calcul de raw_hash.
+Règles      : le hash est stable, ne dépend que du contenu, et est accepté par le
+              contrat JobDetail.
 """
 
 from datetime import UTC, datetime
@@ -32,6 +32,7 @@ def test_hash_accepted_by_job_detail() -> None:
     """A computed hash is a valid JobDetail raw_hash."""
     JobDetail(
         source="jobup",
+        is_test=False,
         url="https://www.jobup.ch/fr/emplois/detail/abc/",
         raw_hash=compute_raw_hash(b"<html></html>"),
         content_type="text/html",

@@ -1,11 +1,12 @@
 """
 __init__.py
 
-Description : public API of the JobCompass data contracts.
-Rules       : bricks import only from here (from contracts import ...),
-              never from the sub-packages: the internal layout can change freely.
-              jobs/            = the contracts exchanged between bricks.
-              blocks/          = what the contracts are made of (contract_model,
+Description : API publique des contrats de données JobCompass.
+Règles      : les briques importent uniquement d'ici (from contracts import ...),
+              jamais depuis les sous-packages : l'organisation interne peut changer
+              librement.
+              jobs/            = les contrats échangés entre briques.
+              blocks/          = ce dont les contrats sont faits (contract_model,
                                  components).
 """
 

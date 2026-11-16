@@ -19,6 +19,11 @@
       "title": "Source",
       "type": "string"
     },
+    "is_test": {
+      "description": "True if written by a test run (limited)",
+      "title": "Is Test",
+      "type": "boolean"
+    },
     "url": {
       "description": "URL of the job detail page",
       "pattern": "^https?://\\S+$",
@@ -56,6 +61,7 @@
   "required": [
     "run_id",
     "source",
+    "is_test",
     "url",
     "seen_at"
   ],

@@ -1,10 +1,11 @@
 """
 test_contracts.py
 
-Description : tests of the JobInfo, JobInfoExtractionLog, JobDetail and
-              JobDetailExtractionLog contracts.
-Rules       : covers valid records, rejected values (naive dates, bad hash, non-2xx
-              status, unknown field) and the JSON round trip.
+Description : tests des contrats JobInfo, JobInfoExtractionLog, JobDetail et
+              JobDetailExtractionLog.
+Règles      : couvre les enregistrements valides, les valeurs rejetées (dates sans
+              fuseau, hash invalide, statut non 2xx, champ inconnu, is_test absent)
+              et l'aller-retour JSON.
 """
 
 from datetime import UTC, datetime
@@ -32,6 +33,7 @@ def job_detail(**changes: object) -> JobDetail:
     """A valid JobDetail, with some fields changed."""
     fields: dict[str, object] = {
         "source": "jobup",
+        "is_test": False,
         "url": URL,
         "raw_hash": HASH,
         "content_type": "text/html",
@@ -47,6 +49,7 @@ def test_job_info_valid() -> None:
     info: JobInfo = JobInfo(
         run_id=RUN,
         source="jobup",
+        is_test=False,
         url=URL,
         seen_at=NOW,
         listing_params={"category": "informatique-telecommunications"},
@@ -60,6 +63,7 @@ def test_job_info_extraction_log_valid() -> None:
     log: JobInfoExtractionLog = JobInfoExtractionLog(
         run_id=RUN,
         source="jobup",
+        is_test=False,
         started_at=NOW,
         finished_at=NOW,
         status=RunStatus.FAILED,
@@ -80,7 +84,7 @@ def test_job_detail_valid() -> None:
 def test_job_detail_extraction_log_valid() -> None:
     """A failed download is logged with its reason."""
     log: JobDetailExtractionLog = JobDetailExtractionLog(
-        source="jobup", url=URL, attempted_at=NOW, error="HTTP 404"
+        source="jobup", is_test=False, url=URL, attempted_at=NOW, error="HTTP 404"
     )
     assert log.error == "HTTP 404"
 
@@ -88,7 +92,13 @@ def test_job_detail_extraction_log_valid() -> None:
 def test_naive_datetime_rejected() -> None:
     """A date without time zone is rejected."""
     with pytest.raises(ValidationError):
-        JobInfo(run_id=RUN, source="jobup", url=URL, seen_at=datetime(2026, 11, 13))
+        JobInfo(
+            run_id=RUN,
+            source="jobup",
+            is_test=False,
+            url=URL,
+            seen_at=datetime(2026, 11, 13),
+        )
 
 
 def test_invalid_hash_rejected() -> None:
@@ -106,7 +116,20 @@ def test_non_2xx_detail_rejected() -> None:
 def test_unknown_field_rejected() -> None:
     """A field not declared in the contract is rejected."""
     with pytest.raises(ValidationError):
-        JobInfo(run_id=RUN, source="jobup", url=URL, seen_at=NOW, company="X")
+        JobInfo(
+            run_id=RUN,
+            source="jobup",
+            is_test=False,
+            url=URL,
+            seen_at=NOW,
+            company="X",
+        )
+
+
+def test_is_test_required() -> None:
+    """is_test has no default: every record says if it comes from a test run."""
+    with pytest.raises(ValidationError):
+        JobInfo(run_id=RUN, source="jobup", url=URL, seen_at=NOW)
 
 
 def test_roundtrip_json() -> None:

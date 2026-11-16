@@ -1,12 +1,14 @@
 """
 job_detail_extraction_log.py
 
-Description : contract of the log of one failed download of a job detail page.
-Rules       : one record per failed attempt (no answer or non-2xx status); a success
-              is a JobDetail instead.
-              The number of failures of a job = its number of records; after
-              max_failures records, the job is set aside and no longer downloaded.
-              error = short reason (no answer, HTTP status), never the content.
+Description : contrat du journal d'un échec de téléchargement d'une page de détail.
+Règles      : un enregistrement par tentative échouée (pas de réponse ou statut
+              non 2xx) ; un succès donne un JobDetail à la place.
+              Nombre d'échecs d'une offre = son nombre d'enregistrements ; au-delà
+              de max_failures, l'offre est mise de côté et n'est plus téléchargée.
+              error = raison courte (pas de réponse, statut HTTP), jamais le contenu.
+              is_test = écrit par un passage de test (limité) : jamais pris en
+              compte, stocké dans une zone à part.
 """
 
 from typing import Literal
@@ -22,6 +24,7 @@ class JobDetailExtractionLog(ContractModel):
 
     schema_version: Literal["1.0"] = "1.0"
     source: SourceSlug
+    is_test: bool = Field(description="True if written by a test run (limited)")
     url: JobUrl
     attempted_at: AwareDatetime
     error: str = Field(description="Short reason of the failure")

@@ -1,8 +1,9 @@
 """
 test_i_use_case.py
 
-Description : tests of the IUseCase interface.
-Rules       : a use case without execute cannot be created; one with it can.
+Description : tests de l'interface IUseCase.
+Règles      : un cas d'utilisation sans execute ne peut pas être créé ; avec
+              execute, il le peut.
 """
 
 import pytest

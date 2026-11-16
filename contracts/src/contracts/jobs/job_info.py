@@ -1,16 +1,19 @@
 """
 job_info.py
 
-Description : contract of a job as seen on a portal result page (its card), before
-              its detail page is downloaded.
-Rules       : produced by extract_job_infos, one record per job per extraction run:
-              the same job is recorded again at each run (its lifetime comes from it).
-              A job is identified by (source, url).
-              run_id = the extraction run the record belongs to (see
+Description : contrat d'une offre telle que vue sur une page de résultats d'un
+              portail (sa carte), avant le téléchargement de sa page de détail.
+Règles      : produit par extract_job_infos, un enregistrement par offre et par run
+              d'extraction : la même offre est réenregistrée à chaque run (sa durée
+              de vie s'en déduit).
+              Une offre est identifiée par (source, url).
+              run_id = le run d'extraction auquel appartient l'enregistrement (voir
               JobInfoExtractionLog).
-              listing_params = context of the run, e.g. {'category': '...'}.
-              card = the job exactly as given by the result page (raw JSON text,
-              never modified); its fields are read later, in SQL.
+              listing_params = contexte du run, ex. {'category': '...'}.
+              card = l'offre exactement comme donnée par la page de résultats (texte
+              JSON brut, jamais modifié) ; ses champs sont lus plus tard, en SQL.
+              is_test = écrit par un passage de test (limité) : jamais pris en
+              compte, stocké dans une zone à part.
 """
 
 from typing import Literal
@@ -27,6 +30,7 @@ class JobInfo(ContractModel):
     schema_version: Literal["1.0"] = "1.0"
     run_id: str = Field(description="Id of the extraction run (UUID)")
     source: SourceSlug
+    is_test: bool = Field(description="True if written by a test run (limited)")
     url: JobUrl
     seen_at: AwareDatetime = Field(description="Time the result page was read")
     listing_params: dict[str, str] = Field(

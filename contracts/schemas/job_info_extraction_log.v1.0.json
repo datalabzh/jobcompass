@@ -1,7 +1,7 @@
 {
   "$defs": {
     "RunStatus": {
-      "description": "Outcome of one run of an ingestion step.",
+      "description": "Outcome of one run of an extraction step.",
       "enum": [
         "completed",
         "failed"
@@ -29,6 +29,11 @@
       "pattern": "^[a-z0-9_]+$",
       "title": "Source",
       "type": "string"
+    },
+    "is_test": {
+      "description": "True if written by a test run (limited)",
+      "title": "Is Test",
+      "type": "boolean"
     },
     "listing_params": {
       "additionalProperties": {
@@ -97,6 +102,7 @@
   "required": [
     "run_id",
     "source",
+    "is_test",
     "started_at",
     "finished_at",
     "status",

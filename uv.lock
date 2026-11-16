@@ -7,7 +7,7 @@ members = [
     "jobcompass",
     "jobcompass-common",
     "jobcompass-contracts",
-    "jobcompass-ingestion",
+    "jobcompass-extraction",
 ]
 
 [[package]]
@@ -155,9 +155,9 @@ requires-dist = [{ name = "pydantic", specifier = ">=2.10" }]
 dev = [{ name = "pytest", specifier = ">=8" }]
 
 [[package]]
-name = "jobcompass-ingestion"
+name = "jobcompass-extraction"
 version = "0.1.0"
-source = { editable = "ingestion" }
+source = { editable = "extraction" }
 dependencies = [
     { name = "httpx" },
     { name = "jobcompass-common" },

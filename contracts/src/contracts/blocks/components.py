@@ -1,17 +1,18 @@
 """
 components.py
 
-Description : the components contracts are made of: closed lists of values, named
-              field types and the raw_hash function.
-Rules       : enumerations are StrEnum, so Parquet files hold readable values.
-              Field types carry their validation pattern and description, both
-              exported in the JSON Schema:
-                SourceSlug = lowercase letters, digits and underscores, e.g. 'jobup'.
-                JobUrl     = http(s) URL without spaces.
-                Sha256Hash = 64 lowercase hex characters.
-              raw_hash = SHA-256 of the uncompressed content, as lowercase hex.
-              Every brick computes it with compute_raw_hash, so the same content
-              always gets the same hash and the same storage path.
+Description : les composants dont sont faits les contrats : listes fermées de
+              valeurs, types de champs nommés et fonction raw_hash.
+Règles      : les énumérations sont des StrEnum, pour que les fichiers Parquet
+              contiennent des valeurs lisibles.
+              Les types de champs portent leur motif de validation et leur
+              description, tous deux exportés dans le JSON Schema :
+                SourceSlug = minuscules, chiffres et underscores, ex. 'jobup'.
+                JobUrl     = URL http(s) sans espace.
+                Sha256Hash = 64 caractères hexadécimaux minuscules.
+              raw_hash = SHA-256 du contenu non compressé, en hexadécimal minuscule.
+              Toutes les briques le calculent avec compute_raw_hash : un même contenu
+              a toujours le même hash et le même chemin de stockage.
 """
 
 import hashlib
@@ -24,9 +25,9 @@ from pydantic import Field
 
 
 class RunStatus(StrEnum):
-    """Outcome of one run of an ingestion step."""
+    """Outcome of one run of an extraction step."""
 
-    COMPLETED = "completed"  # every page was read without error
+    COMPLETED = "completed"  # the planned pages were read without error
     FAILED = "failed"  # the run stopped on an error
 
 

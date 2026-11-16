@@ -1,11 +1,11 @@
 """
 pydantic_to_json_schema.py
 
-Description : exports every contract as a JSON Schema file into contracts/schemas/.
-Rules       : the Pydantic classes are the source of truth, the JSON Schema files
-              are generated, never written by hand.
-              File name = <contract>.v<schema_version>.json.
-              Usage: uv run python contracts/scripts/pydantic_to_json_schema.py
+Description : exporte chaque contrat en fichier JSON Schema dans contracts/schemas/.
+Règles      : les classes Pydantic font foi ; les fichiers JSON Schema sont générés,
+              jamais écrits à la main.
+              Nom du fichier = <contrat>.v<schema_version>.json.
+              Usage : uv run python contracts/scripts/pydantic_to_json_schema.py
 """
 
 import json

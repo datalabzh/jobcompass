@@ -9,7 +9,7 @@ dependencies = []
 dev = ["ruff>=0.17.5"]
 
 [tool.uv.workspace]
-members = ["common", "contracts", "ingestion"]
+members = ["common", "contracts", "extraction"]
 
 [tool.ruff]
 line-length = 88
@@ -28,5 +28,5 @@ ignore = [
 known-first-party = [
     "interfaces",
     "contracts",
-    "ingestion",
+    "extraction",
 ]

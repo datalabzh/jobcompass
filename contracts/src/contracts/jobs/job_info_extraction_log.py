@@ -1,13 +1,18 @@
 """
 job_info_extraction_log.py
 
-Description : contract of the log of one extract_job_infos run.
-Rules       : one record per run, written at its end: status 'completed' if every
-              result page was read, 'failed' with the error otherwise.
-              A run without any record was killed (machine stopped): treated as failed.
-              Only completed runs with a plausible count (distinct_urls close to
-              announced_total) are used in SQL to decide that a job has disappeared.
-              Counts cover what was written before the end or the error.
+Description : contrat du journal d'une extraction des job infos d'une catégorie.
+Règles      : un enregistrement par run et par catégorie, écrit à la fin : statut
+              'completed' si les pages prévues ont été lues sans erreur (toutes, ou
+              max_pages pour un test), 'failed' avec l'erreur sinon.
+              Un run sans enregistrement a été tué (machine arrêtée) : traité comme
+              échoué.
+              Seuls les runs completed, hors test, au comptage plausible
+              (distinct_urls proche de announced_total) servent en SQL à décider
+              qu'une offre a disparu.
+              Les compteurs couvrent ce qui a été écrit avant la fin ou l'erreur.
+              is_test = écrit par un passage de test (limité) : jamais pris en
+              compte, stocké dans une zone à part.
 """
 
 from typing import Literal
@@ -24,6 +29,7 @@ class JobInfoExtractionLog(ContractModel):
     schema_version: Literal["1.0"] = "1.0"
     run_id: str = Field(description="Id of the extraction run (UUID)")
     source: SourceSlug
+    is_test: bool = Field(description="True if written by a test run (limited)")
     listing_params: dict[str, str] = Field(default_factory=dict)
     started_at: AwareDatetime
     finished_at: AwareDatetime
