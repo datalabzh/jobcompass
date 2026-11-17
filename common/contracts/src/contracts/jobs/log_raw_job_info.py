@@ -1,5 +1,5 @@
 """
-raw_job_info_extraction_log.py
+log_raw_job_info.py
 
 Description : contrat du journal d'une extraction des job infos d'une catégorie.
 Règles      : un enregistrement par run et par catégorie, écrit à la fin : statut
@@ -23,7 +23,7 @@ from contracts.components.contract_model import ContractModel
 from contracts.components.field_types import RunStatus, SourceSlug
 
 
-class RawJobInfoExtractionLog(ContractModel):
+class LogRawJobInfo(ContractModel):
     """Log of one extract_job_infos run."""
 
     schema_version: Literal["1.0"] = "1.0"

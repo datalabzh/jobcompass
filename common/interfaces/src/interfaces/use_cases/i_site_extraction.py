@@ -8,11 +8,18 @@ Règles      : chaque site possède tout son processus (comment il découpe ses 
               au-delà de ce que le point d'entrée doit fournir et recevoir.
               Fourni à la création, à l'identique pour tous les sites : source,
               get_page, storage, is_test, les garde-fous max_pages / max_jobs (None =
-              sans limite), max_failures, batch_size, now, et options = la table
-              [extraction.options] du site.toml, que le site valide lui-même.
+              sans limite), max_failures, now, et options = la table
+              [extraction.options] du site.toml, que le site valide lui-même (dont
+              son parseur, IParser).
               Le site écrit ses données lui-même, dans les tables communes
               (catalog) et avec les contrats communs : c'est le contrat,
               pas le code, qui rend les données des sites comparables.
+              L'extraction va chercher les pages et stocke ; le parseur ne fait que
+              lire le contenu qu'elle lui envoie. Une page de détail téléchargée est
+              parsée dans la foulée : le produit final de l'extraction est
+              l'ExtractedJob ; le brut reste stocké pour pouvoir reparser.
+              Les pages de détail sont traitées et écrites une par une : un plantage
+              ne fait rien refaire de ce qui est déjà écrit.
               execute renvoie un ExtractionReport, de même forme pour tous les sites
               (lu par Dagster).
 """
@@ -23,19 +30,21 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from contracts import RawJobInfoExtractionLog, RunStatus
-from interfaces.i_get_page import GetPage
-from interfaces.i_storage import IStorage
-from interfaces.i_use_case import IUseCase
+from contracts import LogRawJobInfo, RunStatus
+from interfaces.infrastructure.i_get_page import GetPage
+from interfaces.infrastructure.i_storage import IStorage
+from interfaces.use_cases.i_use_case import IUseCase
 
 
 @dataclass(frozen=True)
 class DetailsSummary:
-    """Outcome of the detail downloads: pages downloaded, failures, set aside."""
+    """Outcome of the detail pages: downloaded, failed, set aside, then parsed."""
 
-    extracted: int
-    failed: int
-    set_aside: int
+    extracted: int  # pages downloaded
+    failed: int  # downloads failed
+    set_aside: int  # jobs no longer downloaded (max_failures)
+    parsed: int  # pages turned into an ExtractedJob
+    parse_failed: int  # pages downloaded but not parsed
 
 
 @dataclass(frozen=True)
@@ -47,7 +56,7 @@ class ExtractionReport:
     max_pages: int | None
     max_jobs: int | None
     status: RunStatus  # failed if any listing failed
-    listings: list[RawJobInfoExtractionLog]  # one log per listing read
+    listings: list[LogRawJobInfo]  # one log per listing read
     details: DetailsSummary
 
 
@@ -63,7 +72,6 @@ class ISiteExtraction(IUseCase):
         max_pages: int | None,
         max_jobs: int | None,
         max_failures: int,
-        batch_size: int,
         now: Callable[[], datetime],
         options: dict[str, Any],
     ) -> None:
@@ -74,7 +82,6 @@ class ISiteExtraction(IUseCase):
         self.max_pages: int | None = max_pages
         self.max_jobs: int | None = max_jobs
         self.max_failures: int = max_failures
-        self.batch_size: int = batch_size
         self.now: Callable[[], datetime] = now
         self.options: dict[str, Any] = options
 

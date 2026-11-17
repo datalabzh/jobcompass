@@ -10,6 +10,7 @@ members = [
     "jobcompass-entrypoints",
     "jobcompass-extraction",
     "jobcompass-interfaces",
+    "jobcompass-normalization",
     "jobcompass-storage",
 ]
 
@@ -173,9 +174,14 @@ extraction = [
     { name = "jobcompass-extraction" },
     { name = "jobcompass-storage" },
 ]
+normalization = [
+    { name = "jobcompass-normalization" },
+    { name = "jobcompass-storage" },
+]
 
 [package.dev-dependencies]
 dev = [
+    { name = "jobcompass-catalog" },
     { name = "pytest" },
 ]
 
@@ -184,14 +190,19 @@ requires-dist = [
     { name = "jobcompass-contracts", editable = "common/contracts" },
     { name = "jobcompass-extraction", marker = "extra == 'extraction'", editable = "extraction" },
     { name = "jobcompass-interfaces", editable = "common/interfaces" },
+    { name = "jobcompass-normalization", marker = "extra == 'normalization'", editable = "normalization" },
     { name = "jobcompass-storage", marker = "extra == 'extraction'", editable = "storage" },
+    { name = "jobcompass-storage", marker = "extra == 'normalization'", editable = "storage" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "pydantic-settings", specifier = ">=2.6" },
 ]
-provides-extras = ["extraction"]
+provides-extras = ["extraction", "normalization"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8" }]
+dev = [
+    { name = "jobcompass-catalog", editable = "common/catalog" },
+    { name = "pytest", specifier = ">=8" },
+]
 
 [[package]]
 name = "jobcompass-extraction"
@@ -242,6 +253,35 @@ requires-dist = [{ name = "jobcompass-contracts", editable = "common/contracts" 
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8" }]
+
+[[package]]
+name = "jobcompass-normalization"
+version = "0.1.0"
+source = { editable = "normalization" }
+dependencies = [
+    { name = "jobcompass-catalog" },
+    { name = "jobcompass-contracts" },
+    { name = "jobcompass-interfaces" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "jobcompass-storage" },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "jobcompass-catalog", editable = "common/catalog" },
+    { name = "jobcompass-contracts", editable = "common/contracts" },
+    { name = "jobcompass-interfaces", editable = "common/interfaces" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "jobcompass-storage", editable = "storage" },
+    { name = "pytest", specifier = ">=8" },
+]
 
 [[package]]
 name = "jobcompass-storage"

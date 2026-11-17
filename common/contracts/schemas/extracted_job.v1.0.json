@@ -1,0 +1,136 @@
+{
+  "additionalProperties": false,
+  "description": "One job detail page parsed into the fields common to every site.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "description": "Portal slug, e.g. 'jobup'",
+      "pattern": "^[a-z0-9_]+$",
+      "title": "Source",
+      "type": "string"
+    },
+    "is_test": {
+      "description": "True if written by a test run (limited)",
+      "title": "Is Test",
+      "type": "boolean"
+    },
+    "url": {
+      "description": "URL of the job detail page",
+      "pattern": "^https?://\\S+$",
+      "title": "Url",
+      "type": "string"
+    },
+    "raw_hash": {
+      "description": "SHA-256 of the uncompressed content",
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Raw Hash",
+      "type": "string"
+    },
+    "parser": {
+      "description": "Name of the parser, e.g. 'jobup_jsonld'",
+      "title": "Parser",
+      "type": "string"
+    },
+    "parser_version": {
+      "description": "Version of the parser",
+      "title": "Parser Version",
+      "type": "string"
+    },
+    "parsed_at": {
+      "format": "date-time",
+      "title": "Parsed At",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "company": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Company"
+    },
+    "description": {
+      "description": "Text of the job, without HTML",
+      "title": "Description",
+      "type": "string"
+    },
+    "date_posted": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Date Posted"
+    },
+    "postal_code": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Postal Code"
+    },
+    "employment_types": {
+      "description": "As given, e.g. 'FULL_TIME'",
+      "items": {
+        "type": "string"
+      },
+      "title": "Employment Types",
+      "type": "array"
+    },
+    "categories": {
+      "description": "Categories given by the source",
+      "items": {
+        "type": "string"
+      },
+      "title": "Categories",
+      "type": "array"
+    },
+    "declared_skills": {
+      "description": "Skills given by the source",
+      "items": {
+        "type": "string"
+      },
+      "title": "Declared Skills",
+      "type": "array"
+    }
+  },
+  "required": [
+    "source",
+    "is_test",
+    "url",
+    "raw_hash",
+    "parser",
+    "parser_version",
+    "parsed_at",
+    "title",
+    "company",
+    "description",
+    "date_posted",
+    "postal_code",
+    "employment_types",
+    "categories",
+    "declared_skills"
+  ],
+  "title": "ExtractedJob",
+  "type": "object"
+}

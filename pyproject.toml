@@ -9,7 +9,7 @@ dependencies = []
 dev = ["ruff>=0.17.5"]
 
 [tool.uv.workspace]
-members = ["common/catalog", "common/contracts", "common/interfaces", "storage", "extraction", "entrypoints"]
+members = ["common/catalog", "common/contracts", "common/interfaces", "storage", "extraction", "normalization", "entrypoints"]
 
 [tool.ruff]
 line-length = 88
@@ -31,5 +31,6 @@ known-first-party = [
     "entrypoints",
     "extraction",
     "interfaces",
+    "normalization",
     "storage",
 ]

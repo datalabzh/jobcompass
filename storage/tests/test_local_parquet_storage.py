@@ -5,12 +5,13 @@ Description : tests du stockage Parquet local.
 Règles      : ce qui est ajouté est relu, par source ; les fichiers suivent
               l'organisation <table>/source=/date=/part-*.parquet ; un ajout ne
               mélange pas deux contrats ; le schéma Parquet est déduit du contrat
-              (types attendus, X | None nullable, type non prévu refusé) ; les
+              (types attendus, X | None nullable, listes, dates et contrats dans
+              une liste, type non prévu refusé) ; les
               fichiers bruts sont écrits en entier et retrouvés ; un stockage de
               test écrit sous test/ et ne voit pas les vraies données.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -20,11 +21,15 @@ import pytest
 
 from contracts import (
     ContractModel,
+    ExtractedJob,
+    LogRawJobDetail,
+    LogRawJobInfo,
+    NormalizedJob,
+    NormalizedSkill,
     RawJobDetail,
-    RawJobDetailExtractionLog,
     RawJobInfo,
-    RawJobInfoExtractionLog,
     RunStatus,
+    SkillOrigin,
 )
 from storage import LocalParquetStorage
 
@@ -84,7 +89,7 @@ def test_append_nothing(storage: LocalParquetStorage, tmp_path: Path) -> None:
 
 def test_one_contract_per_append(storage: LocalParquetStorage) -> None:
     """Records of two different contracts cannot be appended together."""
-    failure: RawJobDetailExtractionLog = RawJobDetailExtractionLog(
+    failure: LogRawJobDetail = LogRawJobDetail(
         source="fake", is_test=False, url=A, attempted_at=NOW, error="HTTP 404"
     )
     with pytest.raises(ValueError, match="one contract"):
@@ -114,7 +119,7 @@ def test_schema_deduced_from_contract(
     storage: LocalParquetStorage, tmp_path: Path
 ) -> None:
     """The written file has the types of the contract; only X | None is nullable."""
-    log: RawJobInfoExtractionLog = RawJobInfoExtractionLog(
+    log: LogRawJobInfo = LogRawJobInfo(
         run_id="r1",
         source="fake",
         is_test=False,
@@ -131,7 +136,7 @@ def test_schema_deduced_from_contract(
 
     (file,) = (tmp_path / "log").rglob("*.parquet")
     schema: pa.Schema = pq.read_schema(file)
-    assert schema.names == list(RawJobInfoExtractionLog.model_fields)
+    assert schema.names == list(LogRawJobInfo.model_fields)
     assert schema.field("schema_version").type == pa.string()  # Literal
     assert schema.field("status").type == pa.string()  # enumeration
     assert schema.field("is_test").type == pa.bool_()
@@ -162,10 +167,89 @@ def test_unknown_type_rejected(storage: LocalParquetStorage) -> None:
     """A field type with no Parquet equivalent raises TypeError."""
 
     class Odd(ContractModel):
-        """A contract with a list field, not supported yet."""
+        """A contract with a bytes field, not supported yet."""
 
         source: str
-        values: list[int]
+        values: bytes
 
     with pytest.raises(TypeError, match="no Parquet type"):
-        storage.append("odd", [Odd(source="fake", values=[1])])
+        storage.append("odd", [Odd(source="fake", values=b"1")])
+
+
+def test_lists_dates_and_nested_contracts(storage: LocalParquetStorage) -> None:
+    """Lists, dates and a list of contracts are written and read back."""
+
+    class Item(ContractModel):
+        """A small contract held in a list."""
+
+        name: str
+        origin: RunStatus
+
+    class Holder(ContractModel):
+        """A contract with a date, a list of texts and a list of contracts."""
+
+        source: str
+        day: date | None
+        tags: list[str]
+        items: list[Item]
+
+    holder: Holder = Holder(
+        source="fake",
+        day=date(2026, 11, 17),
+        tags=["a", "b"],
+        items=[Item(name="x", origin=RunStatus.COMPLETED)],
+    )
+    storage.append("holder", [holder])
+
+    (row,) = storage.read("holder", "fake")
+    assert row["day"] == date(2026, 11, 17)
+    assert row["tags"] == ["a", "b"]
+    assert row["items"] == [{"name": "x", "origin": "completed"}]
+
+
+def test_parsing_and_normalization_contracts_storable(
+    storage: LocalParquetStorage,
+) -> None:
+    """An ExtractedJob and a NormalizedJob are written and read back."""
+    extracted: ExtractedJob = ExtractedJob(
+        source="fake",
+        is_test=False,
+        url=A,
+        raw_hash="0" * 64,
+        parser="fake_parser",
+        parser_version="1.0.0",
+        parsed_at=NOW,
+        title="Data Engineer",
+        company=None,
+        description="Python and SQL.",
+        date_posted=date(2026, 11, 10),
+        postal_code="1201",
+        employment_types=["FULL_TIME"],
+        categories=[],
+        declared_skills=[],
+    )
+    normalized: NormalizedJob = NormalizedJob(
+        source="fake",
+        is_test=False,
+        url=A,
+        raw_hash="0" * 64,
+        parser_version="1.0.0",
+        normalizer="fake_normalization",
+        normalizer_version="0.1.0",
+        model="keyword_list",
+        model_version="0.1.0",
+        normalizer_description="Keywords found in the text.",
+        normalized_at=NOW,
+        skills=[
+            NormalizedSkill(
+                raw="Python", canonical="python", origin=SkillOrigin.DETECTED
+            )
+        ],
+    )
+    storage.append("extracted_job", [extracted])
+    storage.append("normalized_job", [normalized])
+
+    assert storage.read("extracted_job", "fake")[0]["categories"] == []
+    assert storage.read("normalized_job", "fake")[0]["skills"] == [
+        {"raw": "Python", "canonical": "python", "origin": "detected"}
+    ]

@@ -12,6 +12,8 @@
 #                    Sans option, la commande respecte ces limites ; --full les lève.
 # [extraction.options] = propres à jobup, lues et validées par JobupExtraction
 # categories       = catégories à lire (slugs d'URL) ; une catégorie = une ligne
+# parser           = classe qui lit les pages téléchargées (IParser), "module:Classe" ;
+#                    changer de parseur = changer cette ligne
 
 storage = "storage:LocalParquetStorage"
 storage_options = { data_dir = "data" }
@@ -23,6 +25,7 @@ max_pages = 1
 max_jobs = 2
 
 [extraction.options]
+parser = "extraction.jobup.jobup_parser:JobupParser"
 categories = [
     "informatique-telecommunications",
 ]

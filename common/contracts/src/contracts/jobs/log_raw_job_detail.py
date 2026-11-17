@@ -1,5 +1,5 @@
 """
-raw_job_detail_extraction_log.py
+log_raw_job_detail.py
 
 Description : contrat du journal d'un échec de téléchargement d'une page de détail.
 Règles      : un enregistrement par tentative échouée (pas de réponse ou statut
@@ -19,7 +19,7 @@ from contracts.components.contract_model import ContractModel
 from contracts.components.field_types import JobUrl, SourceSlug
 
 
-class RawJobDetailExtractionLog(ContractModel):
+class LogRawJobDetail(ContractModel):
     """One failed download of a job detail page."""
 
     schema_version: Literal["1.0"] = "1.0"

@@ -8,7 +8,7 @@ Règles      : produit par extract_job_infos, un enregistrement par offre et par
               de vie s'en déduit).
               Une offre est identifiée par (source, url).
               run_id = le run d'extraction auquel appartient l'enregistrement (voir
-              RawJobInfoExtractionLog).
+              LogRawJobInfo).
               listing_params = contexte du run, ex. {'category': '...'}.
               card = l'offre exactement comme donnée par la page de résultats (texte
               JSON brut, jamais modifié) ; ses champs sont lus plus tard, en SQL.

@@ -1,0 +1,13 @@
+# Configuration commune de la normalisation : partagée par tous les normaliseurs.
+# Chaque normaliseur a son dossier (ex. fake/) avec son propre normalizer.toml :
+# créer ou tester un normaliseur ne touche jamais ce fichier.
+#
+# storage          = classe qui stocke les données (IStorage), format "module:Classe" ;
+#                    doit pointer au même endroit que les sites (même data_dir)
+# storage_options  = ses paramètres
+# default          = normaliseur utilisé sans option --normalizer (nom de son dossier) :
+#                    le choix de production, modifié seulement par une décision d'équipe
+
+storage = "storage:LocalParquetStorage"
+storage_options = { data_dir = "data" }
+default = "fake"

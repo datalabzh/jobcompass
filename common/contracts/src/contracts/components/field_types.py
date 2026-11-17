@@ -2,7 +2,8 @@
 field_types.py
 
 Description : les composants dont sont faits les contrats : listes fermées de
-              valeurs, types de champs nommés et fonction raw_hash.
+              valeurs (RunStatus, SkillOrigin), types de champs nommés et
+              fonction raw_hash.
 Règles      : les énumérations sont des StrEnum, pour que les fichiers Parquet
               contiennent des valeurs lisibles.
               Les types de champs portent leur motif de validation et leur
@@ -29,6 +30,13 @@ class RunStatus(StrEnum):
 
     COMPLETED = "completed"  # the planned pages were read without error
     FAILED = "failed"  # the run stopped on an error
+
+
+class SkillOrigin(StrEnum):
+    """Where a skill of a normalized job comes from."""
+
+    DECLARED = "declared"  # given as such by the source (e.g. a skills field)
+    DETECTED = "detected"  # found in the text by the normalizer
 
 
 # --- field types ----------------------------------------------------------------

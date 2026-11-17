@@ -17,17 +17,27 @@ extraction = [
     "jobcompass-extraction",
     "jobcompass-storage",
 ]
+normalization = [
+    "jobcompass-normalization",
+    "jobcompass-storage",
+]
 
 [project.scripts]
 jobcompass-extraction = "entrypoints.extraction_cli:main"
+jobcompass-normalization = "entrypoints.normalization_cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = [
+    "pytest>=8",
+    "jobcompass-catalog",  # the tests write tables of the catalog
+]
 
 [tool.uv.sources]
+jobcompass-catalog = { workspace = true }
 jobcompass-contracts = { workspace = true }
 jobcompass-interfaces = { workspace = true }
 jobcompass-extraction = { workspace = true }
+jobcompass-normalization = { workspace = true }
 jobcompass-storage = { workspace = true }
 
 [build-system]

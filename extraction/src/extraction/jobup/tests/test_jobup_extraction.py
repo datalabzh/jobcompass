@@ -7,7 +7,10 @@ Règles      : vrai stockage dans un dossier temporaire, réseau simulé par des
               journalisée, la limite max_pages, une catégorie en échec qui n'arrête
               pas les autres, la limite max_jobs, le HTML stocké sous son hash avec
               son reçu, les échecs journalisés puis mis de côté, la reprise (rien de
-              retéléchargé), la zone de test, les options refusées.
+              retéléchargé), la zone de test, les options refusées (dont un parseur
+              introuvable), le parsing dans la foulée (ExtractedJob, ou échec
+              journalisé sans perdre le téléchargement), un plantage qui garde tout
+              ce qui a été écrit avant lui.
 """
 
 import json
@@ -25,6 +28,7 @@ from interfaces import ExtractionReport, Page
 from storage import LocalParquetStorage
 
 LISTING: str = "https://www.jobup.ch/fr/emplois/{category}/?page={page}"
+PARSER: str = "extraction.jobup.jobup_parser:JobupParser"
 DETAIL: str = "https://www.jobup.ch/fr/emplois/detail/{id}/"
 
 
@@ -43,6 +47,14 @@ def listing_page(ids: list[str], num_pages: int) -> Page:
     return page(content=f"<script>__INIT__ = {json.dumps(init)};</script>".encode())
 
 
+def detail_page(job_id: str) -> Page:
+    """A jobup detail page with a minimal JSON-LD JobPosting."""
+    posting: str = json.dumps({"@type": "JobPosting", "title": job_id})
+    return page(
+        content=f'<script type="application/ld+json">{posting}</script>'.encode()
+    )
+
+
 def site(pages_by_category: dict[str, list[list[str]]]) -> dict[str, Page]:
     """Result pages per category (a list of job ids per page) and detail pages."""
     pages: dict[str, Page] = {}
@@ -51,7 +63,7 @@ def site(pages_by_category: dict[str, list[list[str]]]) -> dict[str, Page]:
             url: str = LISTING.format(category=category, page=number)
             pages[url] = listing_page(ids, len(pages_ids))
             for job_id in ids:
-                pages[DETAIL.format(id=job_id)] = page(content=job_id.encode())
+                pages[DETAIL.format(id=job_id)] = detail_page(job_id)
     return pages
 
 
@@ -61,6 +73,7 @@ def extraction(
     categories: list[str],
     max_pages: int | None = None,
     max_jobs: int | None = None,
+    parser: str = PARSER,
 ) -> JobupExtraction:
     """A jobup extraction on the fake network."""
     return JobupExtraction(
@@ -71,9 +84,8 @@ def extraction(
         max_pages=max_pages,
         max_jobs=max_jobs,
         max_failures=2,
-        batch_size=2,
         now=fixed_now,
-        options={"categories": categories},
+        options={"categories": categories, "parser": parser},
     )
 
 
@@ -87,7 +99,7 @@ def test_pages_written_and_logged(storage: LocalParquetStorage) -> None:
 
     assert report.status == RunStatus.COMPLETED
     assert len(storage.read(Table.RAW_JOB_INFO, "jobup")) == 3
-    (log,) = storage.read(Table.RAW_JOB_INFO_EXTRACTION_LOG, "jobup")
+    (log,) = storage.read(Table.LOG_RAW_JOB_INFO, "jobup")
     assert (log["status"], log["pages_read"], log["distinct_urls"]) == (
         "completed",
         2,
@@ -165,9 +177,7 @@ def test_failures_logged_then_set_aside(storage: LocalParquetStorage) -> None:
 
     report: ExtractionReport = extraction(storage, FakeGetPage(pages), ["it"]).execute()
 
-    failures: list[dict[str, Any]] = storage.read(
-        Table.RAW_JOB_DETAIL_EXTRACTION_LOG, "jobup"
-    )
+    failures: list[dict[str, Any]] = storage.read(Table.LOG_RAW_JOB_DETAIL, "jobup")
     assert [f["error"] for f in failures] == ["HTTP 404", "HTTP 404"]
     assert (report.details.failed, report.details.set_aside) == (0, 1)
 
@@ -189,3 +199,70 @@ def test_wrong_options_refused(storage: LocalParquetStorage) -> None:
     with pytest.raises(ValidationError):
         extraction(storage, get_page, []).execute()
     assert get_page.requested == []
+
+
+def test_details_parsed(storage: LocalParquetStorage) -> None:
+    """Each downloaded page is parsed into an ExtractedJob, linked by raw_hash."""
+    report: ExtractionReport = extraction(
+        storage, FakeGetPage(site({"it": [["a", "b"]]})), ["it"]
+    ).execute()
+
+    assert (report.details.parsed, report.details.parse_failed) == (2, 0)
+    jobs: list[dict[str, Any]] = storage.read(Table.EXTRACTED_JOB, "jobup")
+    receipts: list[dict[str, Any]] = storage.read(Table.RAW_JOB_DETAIL, "jobup")
+    assert [j["title"] for j in jobs] == ["a", "b"]
+    assert {j["raw_hash"] for j in jobs} == {r["raw_hash"] for r in receipts}
+
+
+def test_unparsable_page_logged(storage: LocalParquetStorage) -> None:
+    """A page without JSON-LD is logged as a parse failure; its download stays."""
+    pages: dict[str, Page] = site({"it": [["a"]]})
+    pages[DETAIL.format(id="a")] = page(content=b"<html>no JSON-LD</html>")
+
+    report: ExtractionReport = extraction(storage, FakeGetPage(pages), ["it"]).execute()
+
+    assert (report.details.extracted, report.details.parse_failed) == (1, 1)
+    (failure,) = storage.read(Table.LOG_EXTRACTED_JOB, "jobup")
+    assert "no JSON-LD JobPosting" in failure["error"]
+    assert storage.read(Table.EXTRACTED_JOB, "jobup") == []
+
+
+def test_unknown_parser_refused(storage: LocalParquetStorage) -> None:
+    """A parser that cannot be imported, or is not an IParser, is refused first."""
+    for parser in ("extraction.jobup.nowhere:Parser", "json:JSONDecoder"):
+        get_page: FakeGetPage = FakeGetPage({})
+        with pytest.raises(ValidationError):
+            extraction(storage, get_page, ["it"], parser=parser).execute()
+        assert get_page.requested == []
+
+
+class CrashingGetPage(FakeGetPage):
+    """A network that crashes the run (not a mere failure) on one URL."""
+
+    def __init__(self, pages: dict[str, Page], crash_on: str) -> None:
+        super().__init__(pages)
+        self.crash_on: str = crash_on
+
+    def __call__(self, url: str) -> Page:
+        """Crash on the chosen URL, answer normally otherwise."""
+        if url == self.crash_on:
+            raise RuntimeError("crash")
+        return super().__call__(url)
+
+
+def test_crash_keeps_what_was_written(storage: LocalParquetStorage) -> None:
+    """Jobs are written one by one: a crash on the 3rd keeps the first two."""
+    pages: dict[str, Page] = site({"it": [["a", "b", "c", "d"]]})
+    crashing: CrashingGetPage = CrashingGetPage(pages, DETAIL.format(id="c"))
+    with pytest.raises(RuntimeError):
+        extraction(storage, crashing, ["it"]).execute()
+
+    get_page: FakeGetPage = FakeGetPage(pages)
+    extraction(storage, get_page, ["it"]).execute()
+
+    assert [url for url in get_page.requested if "detail" in url] == [
+        DETAIL.format(id="c"),
+        DETAIL.format(id="d"),
+    ]
+    jobs: list[dict[str, Any]] = storage.read(Table.EXTRACTED_JOB, "jobup")
+    assert sorted(j["title"] for j in jobs) == ["a", "b", "c", "d"]

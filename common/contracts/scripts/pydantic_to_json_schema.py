@@ -14,18 +14,24 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from contracts import (
+    ExtractedJob,
+    LogExtractedJob,
+    LogRawJobDetail,
+    LogRawJobInfo,
+    NormalizedJob,
     RawJobDetail,
-    RawJobDetailExtractionLog,
     RawJobInfo,
-    RawJobInfoExtractionLog,
 )
 
 SCHEMAS_DIR: Path = Path(__file__).resolve().parents[1] / "schemas"
 CONTRACTS: dict[str, type[BaseModel]] = {
     "raw_job_info": RawJobInfo,
-    "raw_job_info_extraction_log": RawJobInfoExtractionLog,
+    "log_raw_job_info": LogRawJobInfo,
     "raw_job_detail": RawJobDetail,
-    "raw_job_detail_extraction_log": RawJobDetailExtractionLog,
+    "log_raw_job_detail": LogRawJobDetail,
+    "extracted_job": ExtractedJob,
+    "log_extracted_job": LogExtractedJob,
+    "normalized_job": NormalizedJob,
 }
 
 

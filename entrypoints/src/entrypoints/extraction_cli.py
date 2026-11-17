@@ -7,12 +7,14 @@ Règles      : jobcompass-extraction run <site> [--max-pages N] [--max-jobs N]
               jobcompass-extraction run <site> --full
               La commande ne connaît que le nom du site : la classe d'extraction du
               site, le stockage et leurs réglages viennent de
-              extraction/<site>/site.toml. Tout le processus appartient au site.
+              extraction/<site>/site.toml, lu par Config. Tout le processus
+              appartient au site.
               Limites : voir run_limits.py (sans option = test limité par site.toml).
               Réglages communs à tous les sites : variables EXTRACTION_* (ou .env).
               user_agent identifie JobCompass auprès des sites : y mettre un contact.
               La dernière ligne affichée est le rapport JSON (lu par Dagster).
-              Code de sortie 0 si completed, 1 si une catégorie a échoué.
+              Code de sortie 0 si completed, 1 si une catégorie a échoué, 2 si la
+              configuration ou les options sont incorrectes.
 """
 
 import argparse
@@ -28,10 +30,10 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from contracts import RunStatus
+from entrypoints.config import Config, ConfigError, SiteConfig
 from entrypoints.run_limits import RunLimits, add_limit_options, resolve_limits
-from entrypoints.site_config import SiteConfig, import_class, load_site_config
 from extraction.http import make_get_page
-from interfaces import ExtractionReport, GetPage, ISiteExtraction, IStorage
+from interfaces import ExtractionReport, GetPage, ISiteExtraction
 
 LIMITS: list[str] = ["max_pages", "max_jobs"]
 
@@ -46,7 +48,6 @@ class ExtractionSettings(BaseSettings):
     user_agent: str = "JobCompass/0.1 (job market research)"
     http_timeout: float = Field(default=30.0, gt=0)
     max_failures: int = Field(default=3, ge=1)
-    batch_size: int = Field(default=50, ge=1)
     log_level: str = "INFO"
 
 
@@ -59,7 +60,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         dest="command", required=True
     )
     run: argparse.ArgumentParser = commands.add_parser(
-        "run", help="extract a site: raw job infos, then raw job details"
+        "run", help="extract a site: raw job infos, raw job details, extracted jobs"
     )
     run.add_argument("site", help="folder name of the site, e.g. jobup")
     add_limit_options(run, LIMITS)
@@ -74,19 +75,14 @@ def build_extraction(
     get_page: GetPage = make_get_page(
         settings.user_agent, settings.http_timeout, section.min_delay_between_requests
     )
-    storage_class: type[IStorage] = import_class(config.storage, IStorage)
-    site_class: type[ISiteExtraction] = import_class(
-        section.class_path, ISiteExtraction
-    )
-    return site_class(
+    return section.use_case(
         source=site,
         get_page=get_page,
-        storage=storage_class(is_test=limits.is_test, **config.storage_options),
+        storage=config.storage(is_test=limits.is_test, **config.storage_options),
         is_test=limits.is_test,
         max_pages=limits["max_pages"],
         max_jobs=limits["max_jobs"],
         max_failures=settings.max_failures,
-        batch_size=settings.batch_size,
         now=partial(datetime.now, UTC),
         options=section.options,
     )
@@ -104,14 +100,14 @@ def main(argv: list[str] | None = None) -> int:
     args: argparse.Namespace = parse_args(argv)
     settings: ExtractionSettings = ExtractionSettings()
     logging.basicConfig(level=settings.log_level, stream=sys.stderr)
-    config: SiteConfig = load_site_config(args.site)
-    defaults: dict[str, int] = {
-        "max_pages": config.extraction.max_pages,
-        "max_jobs": config.extraction.max_jobs,
-    }
     try:
+        config: SiteConfig = Config.load_site(args.site)
+        defaults: dict[str, int] = {
+            "max_pages": config.extraction.max_pages,
+            "max_jobs": config.extraction.max_jobs,
+        }
         limits: RunLimits = resolve_limits(args, defaults)
-    except ValueError as error:
+    except (ConfigError, ValueError) as error:
         print(f"jobcompass-extraction: error: {error}", file=sys.stderr)
         return 2
     report: ExtractionReport = build_extraction(

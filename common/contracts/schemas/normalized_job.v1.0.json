@@ -1,0 +1,130 @@
+{
+  "$defs": {
+    "NormalizedSkill": {
+      "additionalProperties": false,
+      "description": "One skill of a normalized job.",
+      "properties": {
+        "raw": {
+          "description": "Skill as written in the source, e.g. 'Postgres'",
+          "title": "Raw",
+          "type": "string"
+        },
+        "canonical": {
+          "description": "Canonical form, e.g. 'postgresql'",
+          "title": "Canonical",
+          "type": "string"
+        },
+        "origin": {
+          "$ref": "#/$defs/SkillOrigin"
+        }
+      },
+      "required": [
+        "raw",
+        "canonical",
+        "origin"
+      ],
+      "title": "NormalizedSkill",
+      "type": "object"
+    },
+    "SkillOrigin": {
+      "description": "Where a skill of a normalized job comes from.",
+      "enum": [
+        "declared",
+        "detected"
+      ],
+      "title": "SkillOrigin",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One extracted job, understood: its canonical skills.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "description": "Portal slug, e.g. 'jobup'",
+      "pattern": "^[a-z0-9_]+$",
+      "title": "Source",
+      "type": "string"
+    },
+    "is_test": {
+      "description": "True if written by a test run (limited)",
+      "title": "Is Test",
+      "type": "boolean"
+    },
+    "url": {
+      "description": "URL of the job detail page",
+      "pattern": "^https?://\\S+$",
+      "title": "Url",
+      "type": "string"
+    },
+    "raw_hash": {
+      "description": "SHA-256 of the uncompressed content",
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Raw Hash",
+      "type": "string"
+    },
+    "parser_version": {
+      "description": "Version of the parser of the input",
+      "title": "Parser Version",
+      "type": "string"
+    },
+    "normalizer": {
+      "description": "Name of the normalizer",
+      "title": "Normalizer",
+      "type": "string"
+    },
+    "normalizer_version": {
+      "description": "Version of the normalizer",
+      "title": "Normalizer Version",
+      "type": "string"
+    },
+    "model": {
+      "description": "Name of the model used, e.g. 'keyword_list'",
+      "title": "Model",
+      "type": "string"
+    },
+    "model_version": {
+      "description": "Version of the model",
+      "title": "Model Version",
+      "type": "string"
+    },
+    "normalizer_description": {
+      "description": "What the normalizer and its model do, in one sentence",
+      "title": "Normalizer Description",
+      "type": "string"
+    },
+    "normalized_at": {
+      "format": "date-time",
+      "title": "Normalized At",
+      "type": "string"
+    },
+    "skills": {
+      "items": {
+        "$ref": "#/$defs/NormalizedSkill"
+      },
+      "title": "Skills",
+      "type": "array"
+    }
+  },
+  "required": [
+    "source",
+    "is_test",
+    "url",
+    "raw_hash",
+    "parser_version",
+    "normalizer",
+    "normalizer_version",
+    "model",
+    "model_version",
+    "normalizer_description",
+    "normalized_at",
+    "skills"
+  ],
+  "title": "NormalizedJob",
+  "type": "object"
+}

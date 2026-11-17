@@ -15,7 +15,11 @@ Règles      : chaque ajout écrit un nouveau fichier Parquet :
                 int                         -> entier 64 bits
                 float                       -> réel 64 bits
                 datetime (avec fuseau)      -> horodatage UTC, en microsecondes
+                date                        -> date
                 dict[str, str]              -> map texte -> texte
+                list[X]                     -> liste de X
+                contrat (dans une liste)    -> struct, un champ par champ du
+                                               contrat, mêmes correspondances
               X | None = colonne nullable ; sinon obligatoire. Un type non prévu
               lève TypeError : on l'ajoute ici le jour où un contrat en a besoin.
               Un ajout ne mélange pas deux contrats.
@@ -27,7 +31,7 @@ import os
 import types
 import uuid
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal, Union, get_args, get_origin
@@ -110,14 +114,17 @@ class LocalParquetStorage(IStorage):
         contracts: set[type[ContractModel]] = {type(record) for record in records}
         if len(contracts) > 1:
             raise ValueError(f"one contract per append, got {contracts}")
-        contract: type[ContractModel] = contracts.pop()
+        return pa.schema(self._fields_of(contracts.pop()))
+
+    def _fields_of(self, contract: type[ContractModel]) -> list[pa.Field]:
+        """The Parquet fields of a contract, one per contract field."""
         fields: list[pa.Field] = []
         for name, info in contract.model_fields.items():
             annotation, nullable = self._unwrap_optional(info.annotation)
             fields.append(
                 pa.field(name, self._parquet_type(annotation), nullable=nullable)
             )
-        return pa.schema(fields)
+        return fields
 
     def _unwrap_optional(self, annotation: Any) -> tuple[Any, bool]:  # noqa: ANN401
         """(X, True) for X | None, (annotation, False) otherwise."""
@@ -133,8 +140,12 @@ class LocalParquetStorage(IStorage):
             return self._parquet_type(type(get_args(annotation)[0]))
         if get_origin(annotation) is dict and get_args(annotation) == (str, str):
             return STRING_MAP
+        if get_origin(annotation) is list:
+            return pa.list_(self._item_type(get_args(annotation)[0]))
         if annotation in (datetime, AwareDatetime):
             return TIMESTAMP
+        if annotation is date:
+            return pa.date32()
         if isinstance(annotation, type):
             if issubclass(annotation, bool):  # before int: bool is an int in Python
                 return pa.bool_()
@@ -145,3 +156,9 @@ class LocalParquetStorage(IStorage):
             if issubclass(annotation, float):
                 return pa.float64()
         raise TypeError(f"no Parquet type for {annotation!r}")
+
+    def _item_type(self, annotation: Any) -> pa.DataType:  # noqa: ANN401
+        """The Parquet type of a list item: a struct for a contract."""
+        if isinstance(annotation, type) and issubclass(annotation, ContractModel):
+            return pa.struct(self._fields_of(annotation))
+        return self._parquet_type(annotation)

@@ -110,6 +110,6 @@
     "jobs_seen",
     "distinct_urls"
   ],
-  "title": "RawJobInfoExtractionLog",
+  "title": "LogRawJobInfo",
   "type": "object"
 }
