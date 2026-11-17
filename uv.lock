@@ -5,9 +5,11 @@ requires-python = ">=3.12"
 [manifest]
 members = [
     "jobcompass",
-    "jobcompass-common",
+    "jobcompass-catalog",
     "jobcompass-contracts",
+    "jobcompass-entrypoints",
     "jobcompass-extraction",
+    "jobcompass-interfaces",
     "jobcompass-storage",
 ]
 
@@ -122,9 +124,9 @@ dev = [
 dev = [{ name = "ruff", specifier = ">=0.17.5" }]
 
 [[package]]
-name = "jobcompass-common"
+name = "jobcompass-catalog"
 version = "0.1.0"
-source = { editable = "common" }
+source = { editable = "common/catalog" }
 
 [package.dev-dependencies]
 dev = [
@@ -139,7 +141,7 @@ dev = [{ name = "pytest", specifier = ">=8" }]
 [[package]]
 name = "jobcompass-contracts"
 version = "1.0.0"
-source = { editable = "contracts" }
+source = { editable = "common/contracts" }
 dependencies = [
     { name = "pydantic" },
 ]
@@ -156,15 +158,20 @@ requires-dist = [{ name = "pydantic", specifier = ">=2.10" }]
 dev = [{ name = "pytest", specifier = ">=8" }]
 
 [[package]]
-name = "jobcompass-extraction"
+name = "jobcompass-entrypoints"
 version = "0.1.0"
-source = { editable = "extraction" }
+source = { editable = "entrypoints" }
 dependencies = [
-    { name = "httpx" },
-    { name = "jobcompass-common" },
     { name = "jobcompass-contracts" },
-    { name = "jobcompass-storage" },
+    { name = "jobcompass-interfaces" },
+    { name = "pydantic" },
     { name = "pydantic-settings" },
+]
+
+[package.optional-dependencies]
+extraction = [
+    { name = "jobcompass-extraction" },
+    { name = "jobcompass-storage" },
 ]
 
 [package.dev-dependencies]
@@ -174,12 +181,64 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "jobcompass-common", editable = "common" },
-    { name = "jobcompass-contracts", editable = "contracts" },
-    { name = "jobcompass-storage", editable = "storage" },
+    { name = "jobcompass-contracts", editable = "common/contracts" },
+    { name = "jobcompass-extraction", marker = "extra == 'extraction'", editable = "extraction" },
+    { name = "jobcompass-interfaces", editable = "common/interfaces" },
+    { name = "jobcompass-storage", marker = "extra == 'extraction'", editable = "storage" },
+    { name = "pydantic", specifier = ">=2.10" },
     { name = "pydantic-settings", specifier = ">=2.6" },
 ]
+provides-extras = ["extraction"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8" }]
+
+[[package]]
+name = "jobcompass-extraction"
+version = "0.1.0"
+source = { editable = "extraction" }
+dependencies = [
+    { name = "httpx" },
+    { name = "jobcompass-catalog" },
+    { name = "jobcompass-contracts" },
+    { name = "jobcompass-interfaces" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "jobcompass-storage" },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "jobcompass-catalog", editable = "common/catalog" },
+    { name = "jobcompass-contracts", editable = "common/contracts" },
+    { name = "jobcompass-interfaces", editable = "common/interfaces" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "jobcompass-storage", editable = "storage" },
+    { name = "pytest", specifier = ">=8" },
+]
+
+[[package]]
+name = "jobcompass-interfaces"
+version = "0.1.0"
+source = { editable = "common/interfaces" }
+dependencies = [
+    { name = "jobcompass-contracts" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "jobcompass-contracts", editable = "common/contracts" }]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8" }]
@@ -190,6 +249,7 @@ version = "0.1.0"
 source = { editable = "storage" }
 dependencies = [
     { name = "jobcompass-contracts" },
+    { name = "jobcompass-interfaces" },
     { name = "pyarrow" },
     { name = "pydantic" },
 ]
@@ -201,7 +261,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "jobcompass-contracts", editable = "contracts" },
+    { name = "jobcompass-contracts", editable = "common/contracts" },
+    { name = "jobcompass-interfaces", editable = "common/interfaces" },
     { name = "pyarrow", specifier = ">=18" },
     { name = "pydantic", specifier = ">=2.10" },
 ]

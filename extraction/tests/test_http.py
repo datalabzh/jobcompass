@@ -12,7 +12,8 @@ import time
 import httpx
 import pytest
 
-from extraction.http import GetPage, Page, PageFetchError, make_get_page
+from extraction.http import make_get_page
+from interfaces import GetPage, Page, PageFetchError
 
 URL: str = "https://www.example.ch/page"
 

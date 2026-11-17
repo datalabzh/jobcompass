@@ -5,6 +5,7 @@ description = "Storage shared by the JobCompass bricks: tables of contracts, raw
 requires-python = ">=3.12"
 dependencies = [
     "jobcompass-contracts",
+    "jobcompass-interfaces",
     "pyarrow>=18",
     "pydantic>=2.10",
 ]
@@ -14,6 +15,7 @@ dev = ["pytest>=8"]
 
 [tool.uv.sources]
 jobcompass-contracts = { workspace = true }
+jobcompass-interfaces = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

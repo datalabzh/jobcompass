@@ -37,7 +37,7 @@ import pyarrow.parquet as pq
 from pydantic import AwareDatetime
 
 from contracts import ContractModel
-from storage.i_storage import IStorage
+from interfaces import IStorage
 
 Row = dict[str, Any]  # one Parquet row, column name -> value
 

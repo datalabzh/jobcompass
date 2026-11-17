@@ -1,25 +1,25 @@
 [project]
 name = "jobcompass-extraction"
 version = "0.1.0"
-description = "Extraction of job listings and job pages, raw storage"
+description = "Extraction engine and one folder per site: raw job infos, raw job details"
 requires-python = ">=3.12"
 dependencies = [
-    "jobcompass-common",
+    "jobcompass-catalog",
     "jobcompass-contracts",
-    "jobcompass-storage",
-    "pydantic-settings>=2.6",
+    "jobcompass-interfaces",
     "httpx>=0.27",
 ]
 
-[project.scripts]
-jobcompass-extraction = "extraction.cli:main"
-
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = [
+    "pytest>=8",
+    "jobcompass-storage",  # the tests use the real local storage
+]
 
 [tool.uv.sources]
-jobcompass-common = { workspace = true }
+jobcompass-catalog = { workspace = true }
 jobcompass-contracts = { workspace = true }
+jobcompass-interfaces = { workspace = true }
 jobcompass-storage = { workspace = true }
 
 [build-system]
@@ -28,7 +28,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/extraction"]
+exclude = ["**/tests"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["tests"]
+# tests/ : common code ; src/extraction/<site>/tests/ : each site, next to its code
+testpaths = ["tests", "src"]
+pythonpath = ["."]  # conftest.py, shared by the engine and site tests

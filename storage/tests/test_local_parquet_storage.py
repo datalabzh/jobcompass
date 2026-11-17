@@ -20,10 +20,10 @@ import pytest
 
 from contracts import (
     ContractModel,
-    JobDetail,
-    JobDetailExtractionLog,
-    JobInfo,
-    JobInfoExtractionLog,
+    RawJobDetail,
+    RawJobDetailExtractionLog,
+    RawJobInfo,
+    RawJobInfoExtractionLog,
     RunStatus,
 )
 from storage import LocalParquetStorage
@@ -32,8 +32,8 @@ NOW: datetime = datetime(2026, 11, 16, 6, 0, tzinfo=UTC)
 A: str = "https://site.test/a"
 
 
-def job_info(url: str = A, is_test: bool = False, **changes: Any) -> JobInfo:  # noqa: ANN401
-    """A JobInfo of source 'fake', with some fields changed."""
+def job_info(url: str = A, is_test: bool = False, **changes: Any) -> RawJobInfo:  # noqa: ANN401
+    """A RawJobInfo of source 'fake', with some fields changed."""
     fields: dict[str, Any] = {
         "run_id": "r1",
         "source": "fake",
@@ -41,7 +41,7 @@ def job_info(url: str = A, is_test: bool = False, **changes: Any) -> JobInfo:  #
         "url": url,
         "seen_at": NOW,
     }
-    return JobInfo(**(fields | changes))
+    return RawJobInfo(**(fields | changes))
 
 
 @pytest.fixture
@@ -52,12 +52,14 @@ def storage(tmp_path: Path) -> LocalParquetStorage:
 
 def test_append_then_read(storage: LocalParquetStorage, tmp_path: Path) -> None:
     """A record is written in a partitioned file and read back unchanged."""
-    record: JobInfo = job_info(listing_params={"category": "x"}, card='{"a": 1}')
-    storage.append("job_info", [record])
+    record: RawJobInfo = job_info(listing_params={"category": "x"}, card='{"a": 1}')
+    storage.append("raw_job_info", [record])
 
-    files: list[Path] = list((tmp_path / "job_info" / "source=fake").rglob("*.parquet"))
+    files: list[Path] = list(
+        (tmp_path / "raw_job_info" / "source=fake").rglob("*.parquet")
+    )
     assert len(files) == 1 and files[0].parent.name.startswith("date=")
-    (row,) = storage.read("job_info", "fake")
+    (row,) = storage.read("raw_job_info", "fake")
     assert (row["url"], row["card"], row["is_test"], row["seen_at"]) == (
         A,
         '{"a": 1}',
@@ -69,50 +71,50 @@ def test_append_then_read(storage: LocalParquetStorage, tmp_path: Path) -> None:
 
 def test_read_other_source_or_empty(storage: LocalParquetStorage) -> None:
     """Nothing written for a source or a table reads as an empty list."""
-    storage.append("job_info", [job_info()])
-    assert storage.read("job_info", "other") == []
-    assert storage.read("job_detail", "fake") == []
+    storage.append("raw_job_info", [job_info()])
+    assert storage.read("raw_job_info", "other") == []
+    assert storage.read("raw_job_detail", "fake") == []
 
 
 def test_append_nothing(storage: LocalParquetStorage, tmp_path: Path) -> None:
     """Appending no record writes no file."""
-    storage.append("job_info", [])
-    assert not (tmp_path / "job_info").exists()
+    storage.append("raw_job_info", [])
+    assert not (tmp_path / "raw_job_info").exists()
 
 
 def test_one_contract_per_append(storage: LocalParquetStorage) -> None:
     """Records of two different contracts cannot be appended together."""
-    failure: JobDetailExtractionLog = JobDetailExtractionLog(
+    failure: RawJobDetailExtractionLog = RawJobDetailExtractionLog(
         source="fake", is_test=False, url=A, attempted_at=NOW, error="HTTP 404"
     )
     with pytest.raises(ValueError, match="one contract"):
-        storage.append("job_info", [job_info(), failure])
+        storage.append("raw_job_info", [job_info(), failure])
 
 
 def test_raw_files(storage: LocalParquetStorage, tmp_path: Path) -> None:
     """A raw file is stored under its name and found again."""
-    assert not storage.has_file("job_detail_html/h.html")
-    storage.put_file("job_detail_html/h.html", b"<html/>")
-    assert storage.has_file("job_detail_html/h.html")
-    assert (tmp_path / "job_detail_html" / "h.html").read_bytes() == b"<html/>"
+    assert not storage.has_file("raw_job_detail_html/h.html")
+    storage.put_file("raw_job_detail_html/h.html", b"<html/>")
+    assert storage.has_file("raw_job_detail_html/h.html")
+    assert (tmp_path / "raw_job_detail_html" / "h.html").read_bytes() == b"<html/>"
 
 
 def test_test_zone_is_apart(storage: LocalParquetStorage, tmp_path: Path) -> None:
     """A test storage writes under test/; real and test data never mix."""
     test: LocalParquetStorage = LocalParquetStorage(is_test=True, data_dir=tmp_path)
-    test.append("job_info", [job_info(is_test=True)])
-    test.put_file("job_detail_html/h.html", b"<html/>")
+    test.append("raw_job_info", [job_info(is_test=True)])
+    test.put_file("raw_job_detail_html/h.html", b"<html/>")
 
-    assert (tmp_path / "test" / "job_info").exists()
-    assert storage.read("job_info", "fake") == []
-    assert not storage.has_file("job_detail_html/h.html")
+    assert (tmp_path / "test" / "raw_job_info").exists()
+    assert storage.read("raw_job_info", "fake") == []
+    assert not storage.has_file("raw_job_detail_html/h.html")
 
 
 def test_schema_deduced_from_contract(
     storage: LocalParquetStorage, tmp_path: Path
 ) -> None:
     """The written file has the types of the contract; only X | None is nullable."""
-    log: JobInfoExtractionLog = JobInfoExtractionLog(
+    log: RawJobInfoExtractionLog = RawJobInfoExtractionLog(
         run_id="r1",
         source="fake",
         is_test=False,
@@ -129,7 +131,7 @@ def test_schema_deduced_from_contract(
 
     (file,) = (tmp_path / "log").rglob("*.parquet")
     schema: pa.Schema = pq.read_schema(file)
-    assert schema.names == list(JobInfoExtractionLog.model_fields)
+    assert schema.names == list(RawJobInfoExtractionLog.model_fields)
     assert schema.field("schema_version").type == pa.string()  # Literal
     assert schema.field("status").type == pa.string()  # enumeration
     assert schema.field("is_test").type == pa.bool_()
@@ -141,8 +143,8 @@ def test_schema_deduced_from_contract(
 
 
 def test_every_contract_is_storable(storage: LocalParquetStorage) -> None:
-    """A JobDetail (status code, hash, version) is written and read back."""
-    detail: JobDetail = JobDetail(
+    """A RawJobDetail (status code, hash, version) is written and read back."""
+    detail: RawJobDetail = RawJobDetail(
         source="fake",
         is_test=False,
         url=A,
@@ -152,8 +154,8 @@ def test_every_contract_is_storable(storage: LocalParquetStorage) -> None:
         http_status=200,
         scraper_version="1.0.0",
     )
-    storage.append("job_detail", [detail])
-    assert storage.read("job_detail", "fake")[0]["http_status"] == 200
+    storage.append("raw_job_detail", [detail])
+    assert storage.read("raw_job_detail", "fake")[0]["http_status"] == 200
 
 
 def test_unknown_type_rejected(storage: LocalParquetStorage) -> None:

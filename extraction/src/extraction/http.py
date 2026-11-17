@@ -1,7 +1,8 @@
 """
 http.py
 
-Description : télécharge une page, de la même façon pour tous les sites.
+Description : télécharge une page, de la même façon pour tous les sites
+              (implémentation de GetPage, voir interfaces/i_get_page.py).
 Règles      : un user agent identifiable, un timeout, les redirections suivies.
               Politesse : au moins min_delay secondes entre deux requêtes.
               La page est renvoyée quel que soit son statut HTTP (404, 500...) :
@@ -12,26 +13,10 @@ Règles      : un user agent identifiable, un timeout, les redirections suivies.
 """
 
 import time
-from collections.abc import Callable
-from dataclasses import dataclass
 
 import httpx
 
-
-@dataclass(frozen=True)
-class Page:
-    """Answer received for one URL: body unchanged, any HTTP status."""
-
-    content: bytes
-    http_status: int
-    content_type: str
-
-
-class PageFetchError(Exception):
-    """No HTTP answer was received for the URL (network error, timeout)."""
-
-
-GetPage = Callable[[str], Page]
+from interfaces import GetPage, Page, PageFetchError
 
 
 def make_get_page(
