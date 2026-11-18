@@ -38,3 +38,9 @@ dbt/**/logs/
 #.vscode/
 .idea/
 .DS_Store
+
+# Spikes (explorations): generated outputs
+spikes/**/output/
+
+# Documentation (Zensical): generated site
+site/

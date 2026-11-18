@@ -6,7 +6,11 @@ requires-python = ">=3.12"
 dependencies = []
 
 [dependency-groups]
-dev = ["ruff>=0.17.5"]
+dev = [
+    "dlt[duckdb,parquet]>=1.32.0",
+    "ruff>=0.17.5",
+    "zensical>=0.1.2",
+]
 
 [tool.uv.workspace]
 members = ["common/catalog", "common/contracts", "common/interfaces", "storage", "extraction", "normalization", "entrypoints"]
