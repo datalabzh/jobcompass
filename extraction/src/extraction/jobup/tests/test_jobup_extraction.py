@@ -7,10 +7,10 @@ Règles      : vrai stockage dans un dossier temporaire, réseau simulé par des
               journalisée, la limite max_pages, une catégorie en échec qui n'arrête
               pas les autres, la limite max_jobs, le HTML stocké sous son hash avec
               son reçu, les échecs journalisés puis mis de côté, la reprise (rien de
-              retéléchargé), la zone de test, les options refusées (dont un parseur
-              introuvable), le parsing dans la foulée (ExtractedJob, ou échec
-              journalisé sans perdre le téléchargement), un plantage qui garde tout
-              ce qui a été écrit avant lui.
+              retéléchargé), la zone de test, les options refusées, le bloc brut
+              enregistré avec chaque page (JSON-LD, ou à défaut les paragraphes) et
+              signé par le scraper, un plantage qui garde tout ce qui a été écrit
+              avant lui.
 """
 
 import json
@@ -22,13 +22,12 @@ from conftest import FakeGetPage, fixed_now, page
 from pydantic import ValidationError
 
 from catalog import Table
-from contracts import RunStatus
+from contracts import PayloadFormat, RunStatus
 from extraction.jobup.jobup_extraction import JobupExtraction
 from interfaces import ExtractionReport, Page
 from storage import LocalParquetStorage
 
 LISTING: str = "https://www.jobup.ch/fr/emplois/{category}/?page={page}"
-PARSER: str = "extraction.jobup.jobup_parser:JobupParser"
 DETAIL: str = "https://www.jobup.ch/fr/emplois/detail/{id}/"
 
 
@@ -73,7 +72,6 @@ def extraction(
     categories: list[str],
     max_pages: int | None = None,
     max_jobs: int | None = None,
-    parser: str = PARSER,
 ) -> JobupExtraction:
     """A jobup extraction on the fake network."""
     return JobupExtraction(
@@ -85,7 +83,7 @@ def extraction(
         max_jobs=max_jobs,
         max_failures=2,
         now=fixed_now,
-        options={"categories": categories, "parser": parser},
+        options={"categories": categories},
     )
 
 
@@ -201,39 +199,28 @@ def test_wrong_options_refused(storage: LocalParquetStorage) -> None:
     assert get_page.requested == []
 
 
-def test_details_parsed(storage: LocalParquetStorage) -> None:
-    """Each downloaded page is parsed into an ExtractedJob, linked by raw_hash."""
-    report: ExtractionReport = extraction(
-        storage, FakeGetPage(site({"it": [["a", "b"]]})), ["it"]
-    ).execute()
+def test_payload_stored_and_signed(storage: LocalParquetStorage) -> None:
+    """Each page is stored with its JSON-LD block and the scraper that read it."""
+    extraction(storage, FakeGetPage(site({"it": [["a", "b"]]})), ["it"]).execute()
 
-    assert (report.details.parsed, report.details.parse_failed) == (2, 0)
-    jobs: list[dict[str, Any]] = storage.read(Table.EXTRACTED_JOB, "jobup")
     receipts: list[dict[str, Any]] = storage.read(Table.RAW_JOB_DETAIL, "jobup")
-    assert [j["title"] for j in jobs] == ["a", "b"]
-    assert {j["raw_hash"] for j in jobs} == {r["raw_hash"] for r in receipts}
+    assert [json.loads(r["payload"])["title"] for r in receipts] == ["a", "b"]
+    assert {
+        (r["payload_format"], r["scraper"], r["scraper_version"]) for r in receipts
+    } == {("json_ld", "jobup_extraction", JobupExtraction.version)}
 
 
-def test_unparsable_page_logged(storage: LocalParquetStorage) -> None:
-    """A page without JSON-LD is logged as a parse failure; its download stays."""
+def test_paragraphs_without_json_ld(storage: LocalParquetStorage) -> None:
+    """A page without JSON-LD is stored with its paragraphs: nothing is lost."""
     pages: dict[str, Page] = site({"it": [["a"]]})
-    pages[DETAIL.format(id="a")] = page(content=b"<html>no JSON-LD</html>")
+    pages[DETAIL.format(id="a")] = page(content=b"<html><p>Data Engineer</p></html>")
 
     report: ExtractionReport = extraction(storage, FakeGetPage(pages), ["it"]).execute()
 
-    assert (report.details.extracted, report.details.parse_failed) == (1, 1)
-    (failure,) = storage.read(Table.LOG_EXTRACTED_JOB, "jobup")
-    assert "no JSON-LD JobPosting" in failure["error"]
-    assert storage.read(Table.EXTRACTED_JOB, "jobup") == []
-
-
-def test_unknown_parser_refused(storage: LocalParquetStorage) -> None:
-    """A parser that cannot be imported, or is not an IParser, is refused first."""
-    for parser in ("extraction.jobup.nowhere:Parser", "json:JSONDecoder"):
-        get_page: FakeGetPage = FakeGetPage({})
-        with pytest.raises(ValidationError):
-            extraction(storage, get_page, ["it"], parser=parser).execute()
-        assert get_page.requested == []
+    assert report.details.extracted == 1
+    (receipt,) = storage.read(Table.RAW_JOB_DETAIL, "jobup")
+    assert receipt["payload_format"] == PayloadFormat.PARAGRAPHS
+    assert json.loads(receipt["payload"]) == ["Data Engineer"]
 
 
 class CrashingGetPage(FakeGetPage):
@@ -264,5 +251,10 @@ def test_crash_keeps_what_was_written(storage: LocalParquetStorage) -> None:
         DETAIL.format(id="c"),
         DETAIL.format(id="d"),
     ]
-    jobs: list[dict[str, Any]] = storage.read(Table.EXTRACTED_JOB, "jobup")
-    assert sorted(j["title"] for j in jobs) == ["a", "b", "c", "d"]
+    receipts: list[dict[str, Any]] = storage.read(Table.RAW_JOB_DETAIL, "jobup")
+    assert sorted(json.loads(r["payload"])["title"] for r in receipts) == [
+        "a",
+        "b",
+        "c",
+        "d",
+    ]

@@ -8,7 +8,7 @@ Règles      : le hash est stable, ne dépend que du contenu, et est accepté pa
 
 from datetime import UTC, datetime
 
-from contracts import RawJobDetail, compute_raw_hash
+from contracts import PayloadFormat, RawJobDetail, compute_raw_hash
 
 
 def test_known_value() -> None:
@@ -38,5 +38,8 @@ def test_hash_accepted_by_job_detail() -> None:
         content_type="text/html",
         fetched_at=datetime(2026, 10, 31, tzinfo=UTC),
         http_status=200,
+        scraper="jobup_scraper",
         scraper_version="0.1.0",
+        payload_format=PayloadFormat.PARAGRAPHS,
+        payload="[]",
     )

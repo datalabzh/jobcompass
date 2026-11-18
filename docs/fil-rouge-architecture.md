@@ -14,35 +14,40 @@ Les décisions de processus (commits, organisation du travail) sont consignées 
    fichiers éparpillés.
 2. **Architecture en briques** permettant de travailler en collaboration, en parallèle, sur différents crawlers
    et différentes transformations.
-3. **ELT : on dépose le brut, dbt transforme** (posé par David le 18/11, après-midi). On ne réinvente pas la roue :
-   collecte avec un outil (Crawlee pressenti), chargement avec dlt, transformations avec dbt
-   (bronze → silver → gold, **un staging par type de table brute** : chaque site est un cas particulier).
-   Python ne met **jamais** les données en forme pour des tables futures : pas de sélection, de renommage ni
-   d'aplatissement de champs avant dbt. Seule exception : la normalisation (NLP/LLM), qui lit une table dbt
-   et dépose son résultat comme une nouvelle table brute.
+3. **ELT simple, peu d'outils** (posé par David le 18/11 après-midi) → **ADR-0002** (`docs/adr/0002-elt-brut-minimal-dbt.md`).
+   Python collecte et dépose la donnée **telle quelle** ; toute mise en forme se fait dans **dbt** (dbt-duckdb sur
+   les Parquet, un staging par table brute, puis silver et gold). Python ne met jamais les données en forme pour
+   des tables futures. Outils : Python, DuckDB, dbt ; tout autre outil demande un besoin concret.
+   Pas de dlt, pas de Scrapy ni de Crawlee (sauf site exigeant du JavaScript).
 
-**Contrats (enveloppes) qui en découlent** :
-- **job info** : l'URL et ses métadonnées (date…), rien d'autre ; pas de scraping des pages de résultats au-delà.
+**Tables brutes (enveloppes)** :
+- **job info** : l'URL et ses métadonnées (site, date…), rien d'autre.
 - **job détail** : métadonnées (url, `raw_hash`, date de collecte, version de l'extracteur) + **bloc brut** :
-  le JSON-LD tel quel pour jobup. Site sans JSON : un JSON construit par un scrap basique, ou le texte issu du
-  HTML, dont la normalisation se chargera.
-- `ExtractedJob` (champs choisis et renommés en Python) n'a plus de raison d'être : son rôle passe au staging dbt
-  (à confirmer au moment de l'ADR).
-- Validation Pydantic limitée à l'enveloppe ; la qualité du contenu est vérifiée par des tests dbt.
-
-Ordre de traitement retenu le 18/11 : C5 (dlt) → D1 (Dagster natif) → B1 (outil de collecte).
+  le JSON-LD tel quel s'il existe, sinon les paragraphes du HTML récupérés par un petit parseur.
+  Dans les deux cas, la description est là et la normalisation fait le travail.
+- HTML conservé tel quel, à part. Un fichier Parquet **par passage**, pas par offre.
+- **Schéma décidé le 18/11** : **deux tables**.
+  - `RawJobInfo` inchangé, `card` (JSON brut de la carte de résultat) **conservé**.
+  - `RawJobDetail` passe en **2.0** : ajout de `scraper` (nom du scraper, à côté de `scraper_version`),
+    `payload_format` (`json_ld` | `paragraphs`) et `payload` (texte **toujours JSON** : le JSON-LD tel quel, ou la
+    liste des paragraphes du HTML, qui garde la structure de la page).
+  - `ExtractedJob` (et son journal `LogExtractedJob`) supprimé. Une extraction modifiée = relecture du HTML et
+    nouvelles lignes avec une nouvelle `scraper_version` ; le staging dbt garde la plus récente.
+- Normalisation (NLP/LLM) : lit la description en silver, écrit une nouvelle table brute reprise par dbt.
+- Orchestration : script ou CLI pour l'instant ; Dagster quand il faudra planifier.
 
 ## Point de reprise (18/11, fin de session)
 
-- Principe 3 (ELT) posé : il tranche F1, F2, A5 et réoriente C1, C3, B3, B4, C5, C6. **ADR à rédiger** (principe ELT
-  + enveloppes job info / job détail), puis ADR C5 (+ F4).
-- Branche `spike/dlt` ; spike dans `spikes/dlt/` (`try_dlt.py`, `README.md` avec questions, statuts et résultats).
-- Test 1 du spike fait (chargement d'`ExtractedJob` en Parquet local). **Prochaine étape : test 2 redéfini** :
-  dlt dépose le JSON-LD brut dans **une seule colonne JSON**, sans l'aplatir en tables enfants (comportement par
-  défaut de dlt avec des dict, refusé). Tests 3 à 5 abandonnés (évolution de schéma, reste à faire et relecture
-  relèvent de dbt/SQL ; les petits fichiers se règlent avec les lots de dlt).
-- Moteur dbt nécessaire dès maintenant (C6) : dbt-duckdb sur les Parquet proposé, à trancher.
-- `docs/adr/index.md` indique ADR-0001 « Proposé » alors qu'il est accepté : à corriger au prochain commit.
+- **ADR-0002 accepté** (principe ELT simple). Il tranche C5, B1, B2, C2, F1, F2, A5 et oriente C1, C3, C4, C6, B3, B4.
+- Spike dlt clos (conclusion dans ADR-0002) ; branche `spike/dlt` à abandonner, `spikes/dlt/` à supprimer.
+- **Prochaine étape** : en finir vite avec l'ingestion, en version minimale (enveloppes job info / job détail,
+  écriture par passage, premier modèle de staging dbt), puis porter l'effort sur la **structuration**
+  (golden set, extraction des compétences, premier clustering sur un vrai corpus).
+- Contradiction à lever : A2 (aucune extraction réelle en développement) empêche de valider les clusters ;
+  une collecte réelle ponctuelle sera nécessaire, après F3 (cadre juridique).
+- F4 reste valable (date-heure UTC) ; son ADR reste à rédiger.
+- `docs/adr/index.md` indique ADR-0001 « Proposé » alors que le fil rouge le dit accepté : à trancher
+  (points à lever : lecture du `robots.txt` de jobs.ch).
 - `cadre-projet.md` est en retard sur le code : `interfaces/` découpé en `infrastructure/` et `use_cases/`,
   `site_config.py` et `normalization_config.py` fusionnés dans `entrypoints/config.py`, un dossier par
   normaliseur (`normalization/fake/normalizer.toml`, option `--normalizer`). À mettre à jour à la fin de la refonte.
@@ -59,14 +64,14 @@ Ordre de traitement retenu le 18/11 : C5 (dlt) → D1 (Dagster natif) → B1 (ou
 | A2 | ☑ | Les offres disparaissent : chaque jour sans passage complet réel est un historique perdu à jamais, alors que l'objectif n° 1 (évolution des clusters dans le temps) en dépend. | Comment lancer dès maintenant un passage complet quotidien, avec l'architecture actuelle (cron, Dagster minimal) ? Où stocker les vraies données ? → **Décidé le 18/11** : aucune extraction réelle tant que le projet est en développement ; l'historique antérieur au premier passage réel est accepté comme perdu. Options écartées : passage quotidien avec le code actuel, sitemap seul. Pas d'ADR (priorité de projet). |
 | A3 | ☑ | Une catégorie, ~800 offres : probablement trop peu pour des clusters stables par période. | Quel périmètre de collecte : toutes les catégories jobup ? d'autres portails ? dans quel ordre ? → **ADR-0001 (Accepté le 18/11)** : `docs/adr/0001-perimetre-collecte.md`. Le `robots.txt` et les CGU de jobs.ch seront lus avant d'en développer le scraper. |
 | A4 | ☐ | `ExtractedJob` a été défini sans ses consommateurs. Bonne pratique : contrats pilotés par le consommateur. | Les data scientists existent-ils déjà ? Leur poser : description complète ou sections séparées (missions, profil) ? langue ? HTML brut ? quel historique ? quelle granularité de période ? quelle fraîcheur ? (18/11 : avec le principe 3, leurs réponses façonnent les modèles silver/gold de dbt, plus la collecte.) |
-| A5 | ☑ | Sans consommateur identifié, investir dans le parsing est risqué. | En attendant leurs réponses : garder le brut complet (déjà fait) et limiter l'investissement dans le parsing ? → **Décidé le 18/11 (principe 3)** : le parsing se limite à sortir le bloc brut (JSON-LD) ; tout le reste dans dbt. |
+| A5 | ☑ | Sans consommateur identifié, investir dans le parsing est risqué. | En attendant leurs réponses : garder le brut complet (déjà fait) et limiter l'investissement dans le parsing ? → **ADR-0002 (18/11)** : le parsing se limite à sortir le bloc brut (JSON-LD, sinon paragraphes du HTML) ; tout le reste dans dbt. |
 
 ## B. Collecte
 
 | # | Statut | Remarque | Question à trancher |
 |---|---|---|---|
-| B1 | ◐ | On reconstruit Scrapy à la main (spider par site, Items, callbacks, pipelines). Scrapy fournit déjà AutoThrottle, `robots.txt`, tentatives répétées, cache HTTP des réponses brutes, pause/reprise, concurrence. | Moteur maison, Scrapy utilisé comme bibliothèque (lancé depuis un script), ou `httpx` + bibliothèques (cache HTTP, retries) ? Critères : nombre de sites dans un an, pages JavaScript à rendre, transmission à l'équipe. (18/11 : alternatives recensées — Crawlee for Python, Scrapy + scrapy-playwright ; Scrapling écarté (contournement anti-bot) ; duel Crawlee / Scrapy à trancher après examen du 3e site. Les paginateurs de dlt ne servent qu'aux API JSON.) (18/11 après-midi : orientation de David vers un outil existant, Crawlee pressenti ; moteur maison écarté par le principe 3.) |
-| B2 | ☐ | Objection : « Scrapy est une usine à gaz ». Vrai en partie (Twisted, réglages, projet imposé) pour un seul site. | Le mode bibliothèque lève-t-il l'objection ? Sinon, l'option `httpx` + bibliothèques suffit-elle ? |
+| B1 | ☑ | On reconstruit Scrapy à la main (spider par site, Items, callbacks, pipelines). Scrapy fournit déjà AutoThrottle, `robots.txt`, tentatives répétées, cache HTTP des réponses brutes, pause/reprise, concurrence. | Moteur maison, Scrapy utilisé comme bibliothèque (lancé depuis un script), ou `httpx` + bibliothèques (cache HTTP, retries) ? Critères : nombre de sites dans un an, pages JavaScript à rendre, transmission à l'équipe. (18/11 : alternatives recensées — Crawlee for Python, Scrapy + scrapy-playwright ; Scrapling écarté (contournement anti-bot) ; duel Crawlee / Scrapy à trancher après examen du 3e site. Les paginateurs de dlt ne servent qu'aux API JSON.) → **ADR-0002 (18/11)** : collecte maison minimale avec httpx (délai, `robots.txt` via la bibliothèque standard, tentatives répétées). Scrapy et Crawlee écartés, sauf site exigeant du JavaScript. |
+| B2 | ☑ | Objection : « Scrapy est une usine à gaz ». Vrai en partie (Twisted, réglages, projet imposé) pour un seul site. | Le mode bibliothèque lève-t-il l'objection ? Sinon, l'option `httpx` + bibliothèques suffit-elle ? → **ADR-0002** : objection retenue ; httpx suffit. |
 | B3 | ☐ | Seules les fiches nouvellement téléchargées sont parsées ; le HTML déjà stocké n'est jamais reparsé. | Quand et comment reparser le brut existant (nouveau parseur, nouvelle librairie) ? (18/11 : avec le principe 3, le reparsing devient rare : on modifie un modèle dbt, pas l'extraction.) |
 | B4 | ☐ | Pas de parseur de secours quand le JSON-LD est absent. | Nécessaire maintenant, ou on journalise l'échec et on attend le besoin ? (18/11 : orientation : à défaut de JSON, un JSON issu d'un scrap basique ou le texte issu du HTML, laissé à la normalisation.) |
 
@@ -74,12 +79,12 @@ Ordre de traitement retenu le 18/11 : C5 (dlt) → D1 (Dagster natif) → B1 (ou
 
 | # | Statut | Remarque | Question à trancher |
 |---|---|---|---|
-| C1 | ☐ | `storage.read()` charge toute une table en mémoire Python, fichier par fichier, pour calculer le reste à faire. Contredit « Python garde peu en mémoire » et « le T est en SQL ». | Calculer les restes à faire avec DuckDB (anti-jointure sur les Parquet) ? Ou l'état incrémental de dlt ? (18/11 : orientation SQL, cohérente avec le principe 3 et « état dans les données ».) |
-| C2 | ☐ | Un fichier Parquet par job : des milliers de petits fichiers en quelques semaines. | Compaction périodique ? Écriture par lots + reprise exacte autrement ? Laisser le data warehouse absorber ? |
+| C1 | ☐ | `storage.read()` charge toute une table en mémoire Python, fichier par fichier, pour calculer le reste à faire. Contredit « Python garde peu en mémoire » et « le T est en SQL ». | Calculer les restes à faire avec DuckDB (anti-jointure sur les Parquet) ? Ou l'état incrémental de dlt ? (18/11, ADR-0002 : en SQL avec DuckDB ; l'état est dans les données.) |
+| C2 | ☑ | Un fichier Parquet par job : des milliers de petits fichiers en quelques semaines. | Compaction périodique ? Écriture par lots + reprise exacte autrement ? Laisser le data warehouse absorber ? → **ADR-0002** : un fichier par passage. |
 | C3 | ☐ | Pas de stratégie d'évolution des schémas : l'ajout de `normalizer_description` a obligé à supprimer des données de test. | Comment lire côte à côte des fichiers d'anciennes et de nouvelles versions (union par nom, dlt, migrations) ? (18/11 : enveloppe minimale + bloc brut : le schéma du brut bouge peu ; l'évolution du contenu est absorbée par le staging dbt.) |
-| C4 | ☐ | `IStorage` + `LocalParquetStorage` recouvrent `fsspec` / `pyarrow.dataset` (local ↔ S3/MinIO/GCS par simple URL). | Garder l'abstraction maison ou s'appuyer sur ces bibliothèques ? |
-| C5 | ◐ | dlt couvre une bonne partie de `storage/` et du reste à faire : schéma déduit et évolutif, état incrémental, destinations Parquet / stockage objet, intégration Dagster. | Adopter dlt pour le chargement ? Où s'arrête-t-il, où commence notre code ? → Spike en cours (`spikes/dlt/`, branche `spike/dlt`). Orientations retenues le 18/11 : dlt charge les lignes produites par les scrapers, par lots réglables ; HTML brut hors dlt (responsabilité du scraper) ; état dans les données, pas d'état incrémental dlt ; configuration explicite dans le code ; **validation par Pydantic seulement** (le contrat de schéma de dlt est laissé en `evolve`, pour ne pas dépendre de dlt) ; **une seule version lue : `schema_version` du contrat** (`_dlt_version` reste interne à dlt) ; le contrat est la seule source de vérité, le schéma dlt en est généré. Nettoyage du dossier de travail dlt (copies des fichiers chargés) : à traiter au passage du spike au cas concret. Disposition des données retenue : `data/<producteur>/<table>/` (un dossier par site, `normalization/`), HTML dans `data/html/<site>/`. (18/11 après-midi : dlt confirmé pour le chargement ; test 2 redéfini (JSON brut dans une colonne, sans tables enfants) ; tests 3 à 5 abandonnés.) |
-| C6 | ◐ | Cible : stockage objet → data warehouse → dbt. | Quel warehouse, quel outil de chargement, à quel moment ? (18/11 : chargement = dlt ; un moteur dbt est nécessaire dès maintenant ; dbt-duckdb sur les Parquet proposé, à trancher.) |
+| C4 | ☐ | `IStorage` + `LocalParquetStorage` recouvrent `fsspec` / `pyarrow.dataset` (local ↔ S3/MinIO/GCS par simple URL). | Garder l'abstraction maison ou s'appuyer sur ces bibliothèques ? (18/11, ADR-0002 : `IStorage` probablement superflu ; écriture directe avec pyarrow ou DuckDB, à confirmer à la refonte.) |
+| C5 | ☑ | dlt couvre une bonne partie de `storage/` et du reste à faire : schéma déduit et évolutif, état incrémental, destinations Parquet / stockage objet, intégration Dagster. | Adopter dlt pour le chargement ? Où s'arrête-t-il, où commence notre code ? → Spike en cours (`spikes/dlt/`, branche `spike/dlt`). Orientations retenues le 18/11 : dlt charge les lignes produites par les scrapers, par lots réglables ; HTML brut hors dlt (responsabilité du scraper) ; état dans les données, pas d'état incrémental dlt ; configuration explicite dans le code ; **validation par Pydantic seulement** (le contrat de schéma de dlt est laissé en `evolve`, pour ne pas dépendre de dlt) ; **une seule version lue : `schema_version` du contrat** (`_dlt_version` reste interne à dlt) ; le contrat est la seule source de vérité, le schéma dlt en est généré. Nettoyage du dossier de travail dlt (copies des fichiers chargés) : à traiter au passage du spike au cas concret. Disposition des données retenue : `data/<producteur>/<table>/` (un dossier par site, `normalization/`), HTML dans `data/html/<site>/`. → **ADR-0002 (18/11)** : dlt écarté (plus d'implicite qu'il n'en retire ; aplatissement automatique contraire au principe ELT). Spike clos. |
+| C6 | ◐ | Cible : stockage objet → data warehouse → dbt. | Quel warehouse, quel outil de chargement, à quel moment ? (18/11, ADR-0002 : dbt-duckdb sur les Parquet dès maintenant, sans outil de chargement ; warehouse et stockage objet quand le besoin viendra.) |
 
 ## D. Orchestration et configuration
 
@@ -104,10 +109,10 @@ Ordre de traitement retenu le 18/11 : C5 (dlt) → D1 (Dagster natif) → B1 (ou
 
 | # | Statut | Remarque | Question à trancher |
 |---|---|---|---|
-| F1 | ☑ | Principe « format long », mais `NormalizedJob.skills` est une liste imbriquée. | Aplatir dans le contrat, ou écrire noir sur blanc que l'aplatissement se fait toujours en SQL ? (Spike : avec un modèle Pydantic, dlt écrit les listes en texte JSON, pas en tables enfants.) → **Décidé le 18/11 (principe 3)** : les listes restent telles quelles dans le brut ; l'aplatissement se fait dans dbt (silver). Écartés : aplatissement par dlt (tables enfants, dépendance à dlt), ligne par compétence dans le contrat (forme pensée pour une table future). |
-| F2 | ☑ | `ExtractedJob` ne lit pas `addressRegion`, `workHours`, `jobBenefits`, alors que le JSON-LD les fournit. | Les ajouter maintenant ou attendre la demande des consommateurs (lié à A4) ? → **Sans objet depuis le 18/11 (principe 3)** : le JSON-LD est déposé complet ; dbt prend les champs dont il a besoin. |
+| F1 | ☑ | Principe « format long », mais `NormalizedJob.skills` est une liste imbriquée. | Aplatir dans le contrat, ou écrire noir sur blanc que l'aplatissement se fait toujours en SQL ? (Spike : avec un modèle Pydantic, dlt écrit les listes en texte JSON, pas en tables enfants.) → **ADR-0002 (18/11)** : les listes restent telles quelles dans le brut ; l'aplatissement se fait dans dbt (silver). Écartés : aplatissement par dlt (tables enfants, dépendance à dlt), ligne par compétence dans le contrat (forme pensée pour une table future). |
+| F2 | ☑ | `ExtractedJob` ne lit pas `addressRegion`, `workHours`, `jobBenefits`, alors que le JSON-LD les fournit. | Les ajouter maintenant ou attendre la demande des consommateurs (lié à A4) ? → **Sans objet (ADR-0002)** : le JSON-LD est déposé complet ; dbt prend les champs dont il a besoin. |
 | F3 | ☐ | Cadre juridique non traité : conditions d'utilisation des portails, données personnelles (nLPD). | Qui vérifie, avant la collecte réelle à grande échelle ? |
-| F4 | ☑ | Spike dlt (18/11) : `AwareDatetime` (Pydantic) est écrit en texte par dlt ; un `datetime` + validateur de fuseau est écrit en horodatage. | → **Décidé le 18/11** : type date-heure maison dans `field_types.py` : `datetime` + validateur qui refuse une date naïve et ramène toute date en UTC (remplace `AwareDatetime`). Une date-heure naïve fournie par un portail est rendue explicite par le site lui-même, avec le fuseau du portail. Un job refusé est journalisé, jamais bloquant. Où ranger le fuseau d'un portail (configuration du site ou constante du code du site) : à décider quand un portail en aura besoin. ADR à rédiger avec C5. |
+| F4 | ☑ | Spike dlt (18/11) : `AwareDatetime` (Pydantic) est écrit en texte par dlt ; un `datetime` + validateur de fuseau est écrit en horodatage. | → **Décidé le 18/11** : type date-heure maison dans `field_types.py` : `datetime` + validateur qui refuse une date naïve et ramène toute date en UTC (remplace `AwareDatetime`). Une date-heure naïve fournie par un portail est rendue explicite par le site lui-même, avec le fuseau du portail. Un job refusé est journalisé, jamais bloquant. Où ranger le fuseau d'un portail (configuration du site ou constante du code du site) : à décider quand un portail en aura besoin. ADR à rédiger (C5 étant clos sans dlt, la décision reste utile : dates comparables entre portails). |
 | F5 | ☐ | Les JSON Schema générés (`contracts/schemas/`) servent aux consommateurs non Python et à la lisibilité des revues ; tous les consommateurs connus sont en Python. | Garder la génération des JSON Schema ou la supprimer ? (18/11 : orientation de David : à supprimer à terme s'ils ne sont pas lus à l'extérieur.) |
 
 ## G. Principes et objections (à garder en tête à chaque décision)

@@ -14,8 +14,6 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from contracts import (
-    ExtractedJob,
-    LogExtractedJob,
     LogRawJobDetail,
     LogRawJobInfo,
     NormalizedJob,
@@ -29,8 +27,6 @@ CONTRACTS: dict[str, type[BaseModel]] = {
     "log_raw_job_info": LogRawJobInfo,
     "raw_job_detail": RawJobDetail,
     "log_raw_job_detail": LogRawJobDetail,
-    "extracted_job": ExtractedJob,
-    "log_extracted_job": LogExtractedJob,
     "normalized_job": NormalizedJob,
 }
 

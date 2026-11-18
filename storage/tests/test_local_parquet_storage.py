@@ -21,11 +21,11 @@ import pytest
 
 from contracts import (
     ContractModel,
-    ExtractedJob,
     LogRawJobDetail,
     LogRawJobInfo,
     NormalizedJob,
     NormalizedSkill,
+    PayloadFormat,
     RawJobDetail,
     RawJobInfo,
     RunStatus,
@@ -157,7 +157,10 @@ def test_every_contract_is_storable(storage: LocalParquetStorage) -> None:
         content_type="text/html",
         fetched_at=NOW,
         http_status=200,
+        scraper="fake_scraper",
         scraper_version="1.0.0",
+        payload_format=PayloadFormat.JSON_LD,
+        payload='{"@type": "JobPosting"}',
     )
     storage.append("raw_job_detail", [detail])
     assert storage.read("raw_job_detail", "fake")[0]["http_status"] == 200
@@ -207,27 +210,8 @@ def test_lists_dates_and_nested_contracts(storage: LocalParquetStorage) -> None:
     assert row["items"] == [{"name": "x", "origin": "completed"}]
 
 
-def test_parsing_and_normalization_contracts_storable(
-    storage: LocalParquetStorage,
-) -> None:
-    """An ExtractedJob and a NormalizedJob are written and read back."""
-    extracted: ExtractedJob = ExtractedJob(
-        source="fake",
-        is_test=False,
-        url=A,
-        raw_hash="0" * 64,
-        parser="fake_parser",
-        parser_version="1.0.0",
-        parsed_at=NOW,
-        title="Data Engineer",
-        company=None,
-        description="Python and SQL.",
-        date_posted=date(2026, 11, 10),
-        postal_code="1201",
-        employment_types=["FULL_TIME"],
-        categories=[],
-        declared_skills=[],
-    )
+def test_normalization_contract_storable(storage: LocalParquetStorage) -> None:
+    """A NormalizedJob is written and read back."""
     normalized: NormalizedJob = NormalizedJob(
         source="fake",
         is_test=False,
@@ -246,10 +230,8 @@ def test_parsing_and_normalization_contracts_storable(
             )
         ],
     )
-    storage.append("extracted_job", [extracted])
     storage.append("normalized_job", [normalized])
 
-    assert storage.read("extracted_job", "fake")[0]["categories"] == []
     assert storage.read("normalized_job", "fake")[0]["skills"] == [
         {"raw": "Python", "canonical": "python", "origin": "detected"}
     ]

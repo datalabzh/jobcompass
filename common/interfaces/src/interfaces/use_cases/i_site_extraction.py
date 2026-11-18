@@ -9,15 +9,14 @@ Règles      : chaque site possède tout son processus (comment il découpe ses 
               Fourni à la création, à l'identique pour tous les sites : source,
               get_page, storage, is_test, les garde-fous max_pages / max_jobs (None =
               sans limite), max_failures, now, et options = la table
-              [extraction.options] du site.toml, que le site valide lui-même (dont
-              son parseur, IParser).
+              [extraction.options] du site.toml, que le site valide lui-même.
               Le site écrit ses données lui-même, dans les tables communes
               (catalog) et avec les contrats communs : c'est le contrat,
               pas le code, qui rend les données des sites comparables.
               L'extraction va chercher les pages et stocke ; le parseur ne fait que
-              lire le contenu qu'elle lui envoie. Une page de détail téléchargée est
-              parsée dans la foulée : le produit final de l'extraction est
-              l'ExtractedJob ; le brut reste stocké pour pouvoir reparser.
+              lire le contenu qu'elle lui envoie. Une page de détail téléchargée
+              donne un RawJobDetail avec son bloc brut (ADR-0002 : aucun champ
+              choisi ni renommé, c'est le travail de dbt) ; le HTML reste stocké.
               Les pages de détail sont traitées et écrites une par une : un plantage
               ne fait rien refaire de ce qui est déjà écrit.
               execute renvoie un ExtractionReport, de même forme pour tous les sites
@@ -38,13 +37,11 @@ from interfaces.use_cases.i_use_case import IUseCase
 
 @dataclass(frozen=True)
 class DetailsSummary:
-    """Outcome of the detail pages: downloaded, failed, set aside, then parsed."""
+    """Outcome of the detail pages: downloaded, failed, set aside."""
 
     extracted: int  # pages downloaded
     failed: int  # downloads failed
     set_aside: int  # jobs no longer downloaded (max_failures)
-    parsed: int  # pages turned into an ExtractedJob
-    parse_failed: int  # pages downloaded but not parsed
 
 
 @dataclass(frozen=True)

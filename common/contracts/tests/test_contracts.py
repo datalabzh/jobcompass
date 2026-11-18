@@ -2,25 +2,24 @@
 test_contracts.py
 
 Description : tests des contrats RawJobInfo, LogRawJobInfo, RawJobDetail,
-              LogRawJobDetail, ExtractedJob, LogExtractedJob et
-              NormalizedJob.
+              LogRawJobDetail et NormalizedJob.
 Règles      : couvre les enregistrements valides, les valeurs rejetées (dates sans
-              fuseau, hash invalide, statut non 2xx, champ inconnu, is_test absent)
-              et l'aller-retour JSON.
+              fuseau, hash invalide, statut non 2xx, payload non JSON, format de
+              payload inconnu, champ inconnu, is_test absent) et l'aller-retour
+              JSON.
 """
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
 
 from contracts import (
-    ExtractedJob,
-    LogExtractedJob,
     LogRawJobDetail,
     LogRawJobInfo,
     NormalizedJob,
     NormalizedSkill,
+    PayloadFormat,
     RawJobDetail,
     RawJobInfo,
     RunStatus,
@@ -45,7 +44,10 @@ def job_detail(**changes: object) -> RawJobDetail:
         "content_type": "text/html",
         "fetched_at": NOW,
         "http_status": 200,
+        "scraper": "jobup_scraper",
         "scraper_version": "0.1.0",
+        "payload_format": PayloadFormat.JSON_LD,
+        "payload": '{"@type": "JobPosting", "title": "Data Engineer"}',
     }
     return RawJobDetail(**(fields | changes))
 
@@ -83,8 +85,31 @@ def test_log_raw_job_info_valid() -> None:
 
 
 def test_job_detail_valid() -> None:
-    """A complete RawJobDetail is accepted."""
-    assert job_detail().http_status == 200
+    """A complete RawJobDetail is accepted, in version 2.0."""
+    detail: RawJobDetail = job_detail()
+    assert detail.schema_version == "2.0"
+    assert detail.payload_format == "json_ld"
+
+
+def test_job_detail_paragraphs_valid() -> None:
+    """Without JSON-LD, the payload is the list of paragraphs, as JSON."""
+    detail: RawJobDetail = job_detail(
+        payload_format=PayloadFormat.PARAGRAPHS,
+        payload='["Data Engineer", "Vos missions : ..."]',
+    )
+    assert detail.payload_format == "paragraphs"
+
+
+def test_payload_not_json_rejected() -> None:
+    """A payload that is not JSON text is rejected: dbt must parse it."""
+    with pytest.raises(ValidationError):
+        job_detail(payload="Data Engineer, Geneva")
+
+
+def test_unknown_payload_format_rejected() -> None:
+    """A payload format outside json_ld / paragraphs is rejected."""
+    with pytest.raises(ValidationError):
+        job_detail(payload_format="html")
 
 
 def test_log_raw_job_detail_valid() -> None:
@@ -144,58 +169,6 @@ def test_roundtrip_json() -> None:
     assert RawJobDetail.model_validate_json(detail.model_dump_json()) == detail
 
 
-def extracted_job(**changes: object) -> ExtractedJob:
-    """A valid ExtractedJob, with some fields changed."""
-    fields: dict[str, object] = {
-        "source": "jobup",
-        "is_test": False,
-        "url": URL,
-        "raw_hash": HASH,
-        "parser": "jobup_jsonld",
-        "parser_version": "1.0.0",
-        "parsed_at": NOW,
-        "title": "Data Engineer",
-        "company": "Acme SA",
-        "description": "Python, SQL and Airflow.",
-        "date_posted": date(2026, 11, 10),
-        "postal_code": "1201",
-        "employment_types": ["FULL_TIME"],
-        "categories": ["Informatique"],
-        "declared_skills": [],
-    }
-    return ExtractedJob(**(fields | changes))
-
-
-def test_extracted_job_valid() -> None:
-    """A complete ExtractedJob is accepted; absent values are None or empty."""
-    job: ExtractedJob = extracted_job(company=None, date_posted=None, categories=[])
-    assert job.schema_version == "1.0"
-    assert job.company is None and job.categories == []
-
-
-def test_extracted_job_fields_required() -> None:
-    """Optional values must be given explicitly (None), never forgotten."""
-    fields: dict[str, object] = extracted_job().model_dump()
-    del fields["company"]
-    with pytest.raises(ValidationError):
-        ExtractedJob(**fields)
-
-
-def test_log_extracted_job_valid() -> None:
-    """A failed parsing is logged with its parser and reason."""
-    log: LogExtractedJob = LogExtractedJob(
-        source="jobup",
-        is_test=False,
-        url=URL,
-        raw_hash=HASH,
-        parser="jobup_jsonld",
-        parser_version="1.0.0",
-        attempted_at=NOW,
-        error="no JSON-LD JobPosting",
-    )
-    assert log.error == "no JSON-LD JobPosting"
-
-
 def test_normalized_job_valid() -> None:
     """A NormalizedJob carries its signature and its skills."""
     job: NormalizedJob = NormalizedJob(
@@ -223,9 +196,3 @@ def test_unknown_skill_origin_rejected() -> None:
     """A skill origin outside declared / detected is rejected."""
     with pytest.raises(ValidationError):
         NormalizedSkill(raw="SQL", canonical="sql", origin="guessed")
-
-
-def test_extracted_job_roundtrip_json() -> None:
-    """An ExtractedJob written to JSON and read back is unchanged."""
-    job: ExtractedJob = extracted_job()
-    assert ExtractedJob.model_validate_json(job.model_dump_json()) == job

@@ -11,9 +11,12 @@ Règles      : les briques importent uniquement d'ici (from contracts import ...
 """
 
 from contracts.components.contract_model import ContractModel
-from contracts.components.field_types import RunStatus, SkillOrigin, compute_raw_hash
-from contracts.jobs.extracted_job import ExtractedJob
-from contracts.jobs.log_extracted_job import LogExtractedJob
+from contracts.components.field_types import (
+    PayloadFormat,
+    RunStatus,
+    SkillOrigin,
+    compute_raw_hash,
+)
 from contracts.jobs.log_raw_job_detail import LogRawJobDetail
 from contracts.jobs.log_raw_job_info import LogRawJobInfo
 from contracts.jobs.normalized_job import NormalizedJob, NormalizedSkill
@@ -26,10 +29,9 @@ __all__ = [
     "RawJobInfo",
     "LogRawJobInfo",
     "LogRawJobDetail",
-    "ExtractedJob",
-    "LogExtractedJob",
     "NormalizedJob",
     "NormalizedSkill",
+    "PayloadFormat",
     "RunStatus",
     "SkillOrigin",
     "compute_raw_hash",

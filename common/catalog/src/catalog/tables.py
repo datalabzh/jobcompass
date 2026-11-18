@@ -24,8 +24,6 @@ class Table(StrEnum):
     RAW_JOB_DETAIL = "raw_job_detail"  # RawJobDetail, one per page downloaded
     LOG_RAW_JOB_DETAIL = "log_raw_job_detail"  # LogRawJobDetail, one per failure
     RAW_JOB_DETAIL_HTML = "raw_job_detail_html"  # folder of the raw pages
-    EXTRACTED_JOB = "extracted_job"  # ExtractedJob, one per page parsed
-    LOG_EXTRACTED_JOB = "log_extracted_job"  # LogExtractedJob, one per failure
 
     # normalization
     NORMALIZED_JOB = "normalized_job"  # NormalizedJob, one per job normalized

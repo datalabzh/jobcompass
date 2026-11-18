@@ -1,10 +1,21 @@
 {
+  "$defs": {
+    "PayloadFormat": {
+      "description": "What the payload of a job detail page holds.",
+      "enum": [
+        "json_ld",
+        "paragraphs"
+      ],
+      "title": "PayloadFormat",
+      "type": "string"
+    }
+  },
   "additionalProperties": false,
-  "description": "One job detail page downloaded with success.",
+  "description": "One job detail page downloaded with success, with its raw data block.",
   "properties": {
     "schema_version": {
-      "const": "1.0",
-      "default": "1.0",
+      "const": "2.0",
+      "default": "2.0",
       "title": "Schema Version",
       "type": "string"
     },
@@ -47,9 +58,22 @@
       "title": "Http Status",
       "type": "integer"
     },
+    "scraper": {
+      "description": "Name of the scraper, e.g. 'jobup_scraper'",
+      "title": "Scraper",
+      "type": "string"
+    },
     "scraper_version": {
       "description": "Version of the code that fetched it",
       "title": "Scraper Version",
+      "type": "string"
+    },
+    "payload_format": {
+      "$ref": "#/$defs/PayloadFormat"
+    },
+    "payload": {
+      "description": "Raw data block of the page, as JSON text",
+      "title": "Payload",
       "type": "string"
     }
   },
@@ -61,7 +85,10 @@
     "content_type",
     "fetched_at",
     "http_status",
-    "scraper_version"
+    "scraper",
+    "scraper_version",
+    "payload_format",
+    "payload"
   ],
   "title": "RawJobDetail",
   "type": "object"

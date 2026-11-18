@@ -60,7 +60,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         dest="command", required=True
     )
     run: argparse.ArgumentParser = commands.add_parser(
-        "run", help="extract a site: raw job infos, raw job details, extracted jobs"
+        "run", help="extract a site: raw job infos, then raw job details"
     )
     run.add_argument("site", help="folder name of the site, e.g. jobup")
     add_limit_options(run, LIMITS)

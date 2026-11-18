@@ -2,7 +2,7 @@
 field_types.py
 
 Description : les composants dont sont faits les contrats : listes fermées de
-              valeurs (RunStatus, SkillOrigin), types de champs nommés et
+              valeurs (RunStatus, SkillOrigin, PayloadFormat), types de champs nommés et
               fonction raw_hash.
 Règles      : les énumérations sont des StrEnum, pour que les fichiers Parquet
               contiennent des valeurs lisibles.
@@ -37,6 +37,13 @@ class SkillOrigin(StrEnum):
 
     DECLARED = "declared"  # given as such by the source (e.g. a skills field)
     DETECTED = "detected"  # found in the text by the normalizer
+
+
+class PayloadFormat(StrEnum):
+    """What the payload of a job detail page holds."""
+
+    JSON_LD = "json_ld"  # the JSON-LD of the page, as is
+    PARAGRAPHS = "paragraphs"  # no JSON-LD: the paragraphs of the HTML, in order
 
 
 # --- field types ----------------------------------------------------------------

@@ -14,8 +14,8 @@ Règles      : un parseur ne fait que lire : aucune requête, aucune écriture. 
               parseur produit : changer ce qui est lu ou comment = monter version.
               Une classe concrète sans signature complète est refusée dès sa
               définition (TypeError), comme une classe sans parse.
-              Changer de parseur (autre librairie...) = une nouvelle classe,
-              déclarée dans le site.toml ; le processus d'extraction ne change pas.
+              Changer de parseur (autre librairie...) = une nouvelle classe, que la
+              classe d'extraction du site utilise à la place de l'ancienne.
 """
 
 from abc import ABC, abstractmethod

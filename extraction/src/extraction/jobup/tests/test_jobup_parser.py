@@ -6,19 +6,19 @@ Règles      : aucun réseau : le parseur reçoit un contenu. Deux vraies pages
               enregistrées (fixtures/) et des pages construites pour le test.
               Pages de résultats ('job_info') : nombre de pages, total, jobs et leur
               URL ; page sans __INIT__ refusée.
-              Fiches ('job_detail') : champs lus sur une vraie page, description sans
-              HTML, formes variables du JSON-LD, champs absents, page sans JobPosting
-              ou au JSON illisible refusée.
+              Fiches ('job_detail') : bloc JSON-LD du JobPosting gardé tel quel (vraie
+              page, plusieurs blocs) ; à défaut (pas de JSON-LD, JSON illisible),
+              paragraphes du texte visible, sans script ni style.
               Type de page inconnu refusé.
 """
 
 import json
-from datetime import date
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from contracts import PayloadFormat
 from extraction.jobup.jobup_parser import (
     JOB_DETAIL,
     JOB_INFO,
@@ -32,13 +32,8 @@ FIXTURES: Path = Path(__file__).parent / "fixtures"
 PARSER: JobupParser = JobupParser()
 
 
-def detail(posting: dict[str, Any]) -> JobupJobDetail:
-    """Parse a detail page whose JSON-LD holds a breadcrumb list and this posting."""
-    breadcrumb: list[dict[str, Any]] = [{"@type": "BreadcrumbList"}]
-    content: bytes = (
-        f'<script type="application/ld+json">{json.dumps(breadcrumb)}</script>'
-        f'<script type="application/ld+json">{json.dumps(posting)}</script>'
-    ).encode()
+def detail(content: bytes) -> JobupJobDetail:
+    """Parse a detail page."""
     result: object = PARSER.parse(JOB_DETAIL, content)
     assert isinstance(result, JobupJobDetail)
     return result
@@ -71,69 +66,40 @@ def test_listing_without_data_refused() -> None:
 
 
 def test_real_detail_page() -> None:
-    """A real job page gives its title, company, place, date and category."""
-    job: object = PARSER.parse(
-        JOB_DETAIL, (FIXTURES / "jobup_detail_page.html").read_bytes()
-    )
+    """A real job page gives its JSON-LD JobPosting block, as in the page."""
+    job: JobupJobDetail = detail((FIXTURES / "jobup_detail_page.html").read_bytes())
 
-    assert isinstance(job, JobupJobDetail)
-    assert (job.title, job.company, job.postal_code) == (
-        "Ingénieur·e software .NET 10",
-        "Icube SA",
-        "1700",
-    )
-    assert job.date_posted == date(2026, 11, 17)
-    assert job.employment_types == ["Durée indéterminée"]
-    assert job.categories[0].startswith("Informatique / Télécommunications")
-    assert job.declared_skills == []
-    assert "Ingénieur·e logiciel" in job.description and "<" not in job.description
+    assert job.payload_format == PayloadFormat.JSON_LD
+    posting: dict[str, Any] = json.loads(job.payload)
+    assert posting["@type"] == "JobPosting"
+    assert posting["title"] == "Ingénieur·e software .NET 10"
+    assert posting["hiringOrganization"]["name"] == "Icube SA"
 
 
-def test_description_without_html() -> None:
-    """The description is plain text, one line per HTML block."""
+def test_job_posting_block_kept_as_is() -> None:
+    """Among several JSON-LD blocks, the JobPosting one is kept, text unchanged."""
+    breadcrumb: str = json.dumps([{"@type": "BreadcrumbList"}])
+    posting: str = '{"@type": "JobPosting",  "title": "T", "x": "<p>a</p>"}'
     job: JobupJobDetail = detail(
-        {
-            "@type": "JobPosting",
-            "title": "T",
-            "description": "<p>Python &amp; SQL</p><ul><li>dbt</li></ul>",
-        }
+        (
+            f'<script type="application/ld+json">{breadcrumb}</script>'
+            f'<script type="application/ld+json">\n{posting}\n</script>'
+        ).encode()
     )
-    assert job.description == "Python & SQL\ndbt"
+    assert (job.payload_format, job.payload) == (PayloadFormat.JSON_LD, posting)
 
 
-def test_variable_shapes() -> None:
-    """Lists or texts, objects or lists of objects, are all read as lists."""
-    job: JobupJobDetail = detail(
-        {
-            "@type": "JobPosting",
-            "title": "T",
-            "employmentType": ["FULL_TIME", "PART_TIME"],
-            "occupationalCategory": "Informatique",
-            "skills": [{"@type": "DefinedTerm", "name": "Python"}, "SQL"],
-            "jobLocation": [{"address": {"postalCode": 1201}}],
-        }
-    )
-    assert job.employment_types == ["FULL_TIME", "PART_TIME"]
-    assert job.categories == ["Informatique"]
-    assert job.declared_skills == ["Python", "SQL"]
-    assert job.postal_code == "1201"
-
-
-def test_missing_fields() -> None:
-    """Fields absent from the JSON-LD are None or empty lists."""
-    job: JobupJobDetail = detail({"@type": "JobPosting", "title": "T"})
-    assert (job.company, job.date_posted, job.postal_code) == (None, None, None)
-    assert (job.description, job.employment_types, job.categories) == ("", [], [])
-
-
-def test_detail_without_job_posting_refused() -> None:
-    """A page without JSON-LD JobPosting, or with broken JSON, raises ParsingError."""
+def test_paragraphs_without_job_posting() -> None:
+    """Without JSON-LD JobPosting, the visible text of the page, by paragraph."""
     for content in (
-        b"<html><body>no JSON-LD here</body></html>",
-        b'<script type="application/ld+json">{broken</script>',
+        b"<html><head><style>p {}</style><script>var x;</script></head>"
+        b"<body><h1>Data  Engineer</h1><p>Python &amp; SQL</p><li>dbt</li></body>",
+        b'<script type="application/ld+json">{broken</script>'
+        b"<h1>Data Engineer</h1><p>Python &amp; SQL</p><li>dbt</li>",
     ):
-        with pytest.raises(ParsingError, match="JobPosting"):
-            PARSER.parse(JOB_DETAIL, content)
+        job: JobupJobDetail = detail(content)
+        assert job.payload_format == PayloadFormat.PARAGRAPHS
+        assert json.loads(job.payload) == ["Data Engineer", "Python & SQL", "dbt"]
 
 
 def test_unknown_kind_refused() -> None:
