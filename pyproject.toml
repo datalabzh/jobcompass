@@ -7,7 +7,6 @@ dependencies = []
 
 [dependency-groups]
 dev = [
-    "dlt[duckdb,parquet]>=1.32.0",
     "ruff>=0.17.5",
     "zensical>=0.1.2",
 ]

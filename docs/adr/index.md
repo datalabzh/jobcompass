@@ -18,3 +18,4 @@ qui le reprendra.
 | N° | Titre | Statut | Date |
 |---|---|---|---|
 | [0001](0001-perimetre-collecte.md) | Périmètre de collecte | Proposé | 2026-11-17 |
+| [0002](0002-elt-brut-minimal-dbt.md) | ELT : brut minimal, transformations dans dbt, peu d'outils | Accepté | 2026-11-18 |
