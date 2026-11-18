@@ -8,6 +8,7 @@ dependencies = [
     "jobcompass-contracts",
     "jobcompass-interfaces",
     "httpx>=0.27",
+    "selectolax>=1.0.2",
 ]
 
 [dependency-groups]

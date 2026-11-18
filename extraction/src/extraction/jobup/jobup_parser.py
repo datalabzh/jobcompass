@@ -15,16 +15,18 @@ Règles      : une seule méthode publique, parse(kind, content) :
               URL d'un job construite à partir de son id. Page sans __INIT__ :
               ParsingError.
               Fiche (ADR-0002 : aucun champ choisi ni renommé, c'est le travail de
-              dbt) : le bloc JSON-LD qui contient le JobPosting, texte exact de la
-              page (json_ld) ; à défaut, les paragraphes du texte de la page, dans
-              l'ordre, en liste JSON (paragraphs). Une fiche est donc toujours lue.
+              dbt), lue avec selectolax : le bloc JSON-LD qui contient le
+              JobPosting, texte exact de la page (json_ld) ; à défaut, les
+              paragraphes du texte visible (sans script ni style), un par bloc
+              HTML, dans l'ordre, en liste JSON (paragraphs). Une fiche est donc
+              toujours lue.
 """
 
 import json
-import re
 from dataclasses import dataclass
-from html.parser import HTMLParser
 from typing import Any
+
+from selectolax.lexbor import LexborHTMLParser
 
 from contracts import PayloadFormat
 from interfaces import IParser, ParsingError
@@ -33,13 +35,9 @@ JOB_INFO: str = "job_info"  # a result page
 JOB_DETAIL: str = "job_detail"  # the detail page of a job
 JOB_URL: str = "https://www.jobup.ch/fr/emplois/detail/{id}/"
 INIT_MARKER: str = "__INIT__"
-JSON_LD: re.Pattern[str] = re.compile(
-    r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', re.DOTALL
-)
-BLOCK_TAGS: frozenset[str] = frozenset(
-    {"p", "div", "br", "li", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6", "tr"}
-)
-HIDDEN_TAGS: frozenset[str] = frozenset({"script", "style", "noscript", "template"})
+JSON_LD: str = 'script[type^="application/ld+json"]'  # also '...; charset=...'
+BLOCKS: str = "p, div, br, li, ul, ol, h1, h2, h3, h4, h5, h6, tr"
+HIDDEN_TAGS: list[str] = ["script", "style", "noscript", "template"]
 
 
 @dataclass(frozen=True)
@@ -115,17 +113,19 @@ class JobupParser(IParser):
 
     def _parse_job_detail(self, html: str) -> JobupJobDetail:
         """The JSON-LD block of the JobPosting, or else the paragraphs of the page."""
-        block: str | None = self._job_posting_block(html)
+        tree: LexborHTMLParser = LexborHTMLParser(html)
+        block: str | None = self._job_posting_block(tree)
         if block is not None:
             return JobupJobDetail(payload_format=PayloadFormat.JSON_LD, payload=block)
         return JobupJobDetail(
             payload_format=PayloadFormat.PARAGRAPHS,
-            payload=json.dumps(self._paragraphs(html), ensure_ascii=False),
+            payload=json.dumps(self._paragraphs(tree), ensure_ascii=False),
         )
 
-    def _job_posting_block(self, html: str) -> str | None:
+    def _job_posting_block(self, tree: LexborHTMLParser) -> str | None:
         """The text of the JSON-LD block holding a JobPosting, as in the page."""
-        for block in JSON_LD.findall(html):
+        for node in tree.css(JSON_LD):
+            block: str = node.text()
             try:
                 data: Any = json.loads(block)
             except json.JSONDecodeError:
@@ -135,44 +135,12 @@ class JobupParser(IParser):
                     return block.strip()
         return None
 
-    def _paragraphs(self, html: str) -> list[str]:
+    def _paragraphs(self, tree: LexborHTMLParser) -> list[str]:
         """The visible text of the page, one paragraph per block, spaces collapsed."""
-        reader: _TextReader = _TextReader()
-        reader.feed(html)
-        reader.close()
-        lines: list[str] = [
-            " ".join(line.split()) for line in reader.text().split("\n")
-        ]
+        tree.strip_tags(HIDDEN_TAGS)
+        for node in tree.css(BLOCKS):
+            node.insert_before("\n")
+            node.insert_after("\n")
+        text: str = tree.body.text() if tree.body is not None else ""
+        lines: list[str] = [" ".join(line.split()) for line in text.split("\n")]
         return [line for line in lines if line]
-
-
-class _TextReader(HTMLParser):
-    """Collects the visible text of a page, with a line break at each block."""
-
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self._parts: list[str] = []
-        self._hidden: int = 0  # depth inside script, style...
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        """A block tag starts a new line; hidden tags hide their content."""
-        if tag in HIDDEN_TAGS:
-            self._hidden += 1
-        elif tag in BLOCK_TAGS:
-            self._parts.append("\n")
-
-    def handle_endtag(self, tag: str) -> None:
-        """A block tag ends its line; a hidden tag ends its hidden content."""
-        if tag in HIDDEN_TAGS:
-            self._hidden = max(0, self._hidden - 1)
-        elif tag in BLOCK_TAGS:
-            self._parts.append("\n")
-
-    def handle_data(self, data: str) -> None:
-        """Keep the visible text."""
-        if not self._hidden:
-            self._parts.append(data)
-
-    def text(self) -> str:
-        """All the visible text collected."""
-        return "".join(self._parts)

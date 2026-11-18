@@ -7,8 +7,9 @@ Règles      : aucun réseau : le parseur reçoit un contenu. Deux vraies pages
               Pages de résultats ('job_info') : nombre de pages, total, jobs et leur
               URL ; page sans __INIT__ refusée.
               Fiches ('job_detail') : bloc JSON-LD du JobPosting gardé tel quel (vraie
-              page, plusieurs blocs) ; à défaut (pas de JSON-LD, JSON illisible),
-              paragraphes du texte visible, sans script ni style.
+              page, plusieurs blocs, attribut type écrit autrement) ; à défaut (pas
+              de JSON-LD, JSON illisible), paragraphes du texte visible, sans script
+              ni style, un par bloc HTML.
               Type de page inconnu refusé.
 """
 
@@ -89,11 +90,23 @@ def test_job_posting_block_kept_as_is() -> None:
     assert (job.payload_format, job.payload) == (PayloadFormat.JSON_LD, posting)
 
 
+def test_type_attribute_written_otherwise() -> None:
+    """The JSON-LD is found with single quotes or a charset in its type."""
+    posting: str = '{"@type": "JobPosting", "title": "T"}'
+    for script in (
+        f"<script type='application/ld+json'>{posting}</script>",
+        f'<script type="application/ld+json; charset=utf-8">{posting}</script>',
+    ):
+        job: JobupJobDetail = detail(script.encode())
+        assert (job.payload_format, job.payload) == (PayloadFormat.JSON_LD, posting)
+
+
 def test_paragraphs_without_job_posting() -> None:
     """Without JSON-LD JobPosting, the visible text of the page, by paragraph."""
     for content in (
         b"<html><head><style>p {}</style><script>var x;</script></head>"
-        b"<body><h1>Data  Engineer</h1><p>Python &amp; SQL</p><li>dbt</li></body>",
+        b"<body><h1>Data  Engineer</h1><p>Python &amp; <b>SQL</b></p><li>dbt</li>"
+        b"</body>",
         b'<script type="application/ld+json">{broken</script>'
         b"<h1>Data Engineer</h1><p>Python &amp; SQL</p><li>dbt</li>",
     ):
