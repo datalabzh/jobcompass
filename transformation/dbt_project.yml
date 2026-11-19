@@ -1,0 +1,22 @@
+# Projet dbt de JobCompass (ADR-0002) : Python dépose le brut, dbt met en forme.
+#   sources  (bronze) : les Parquet bruts, lus tels quels, jamais modifiés
+#   staging  (silver) : un modèle par table brute et par site, stg_<site>__<table>
+#   marts    (gold)   : plus tard (normalisation, clusters)
+# Lancer depuis ce dossier : uv run dbt build --target test   (ou --target real)
+
+name: jobcompass
+version: "0.1.0"
+config-version: 2
+profile: jobcompass
+
+model-paths: ["models"]
+target-path: target
+clean-targets: [target, dbt_packages]
+
+flags:
+  send_anonymous_usage_stats: false  # pas de télémétrie
+
+models:
+  jobcompass:
+    staging:
+      +materialized: table  # pas de view : ses chemins relatifs dépendraient du dossier courant

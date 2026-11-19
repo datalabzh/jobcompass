@@ -1,0 +1,18 @@
+# Profil dbt, versionné dans le projet (aucun fichier dans ~/.dbt/) : dbt lit d'abord
+# le profiles.yml du dossier courant.
+#   test : base DuckDB de la zone de test, à côté des données de test
+#   real : base DuckDB des vraies données
+# Les deux fichiers .duckdb sont ignorés par git ; supprimer data/test efface aussi
+# la base de test.
+
+jobcompass:
+  target: test
+  outputs:
+    test:
+      type: duckdb
+      path: ../data/test/jobcompass.duckdb
+      threads: 1
+    real:
+      type: duckdb
+      path: ../data/jobcompass.duckdb
+      threads: 1

@@ -29,10 +29,10 @@ data/
 logs/
 *.log
 
-# dbt
-dbt/**/target/
-dbt/**/dbt_packages/
-dbt/**/logs/
+# dbt (transformation/) ; logs/ est déjà ignoré plus haut
+transformation/target/
+transformation/dbt_packages/
+transformation/.user.yml
 
 # IDE / OS
 #.vscode/

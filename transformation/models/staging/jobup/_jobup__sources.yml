@@ -1,0 +1,21 @@
+# Tables brutes de jobup.ch (bronze), écrites par l'extraction Python.
+# Fichiers : <racine>/<table>/source=jobup/date=<jour>/part-*.parquet, racine = celle
+# du stockage Python : ../data/test (target test) ou ../data (target real).
+# union_by_name : des fichiers de versions de contrat différentes se lisent ensemble.
+# hive_partitioning désactivé : source est déjà une colonne, date (jour d'écriture)
+# n'est pas utile.
+
+version: 2
+
+sources:
+  - name: jobup
+    description: Tables brutes de jobup.ch, telles que déposées par l'extraction.
+    meta:
+      external_location: >-
+        read_parquet('{{ "../data/test" if target.name == "test" else "../data" }}/{name}/source=jobup/*/*.parquet',
+        union_by_name = true, hive_partitioning = false)
+    tables:
+      - name: raw_job_info
+        description: Une ligne par offre vue sur une page de résultats, par passage (RawJobInfo).
+      - name: raw_job_detail
+        description: Une ligne par fiche téléchargée, avec son bloc brut (RawJobDetail).
