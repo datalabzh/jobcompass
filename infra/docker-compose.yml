@@ -1,0 +1,65 @@
+# Infrastructure locale de JobCompass.
+# Lancement depuis la racine du dépôt :
+#   docker compose -f infra/docker-compose.yml up -d
+# Les variables sont lues dans infra/.env (modèle : infra/.env.example).
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: jobcompass-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Stockage objet compatible S3 (remplace MinIO, dont l'édition
+  # communautaire n'est plus maintenue). Conserve le HTML brut des offres.
+  rustfs:
+    image: rustfs/rustfs:1.0.0
+    container_name: jobcompass-rustfs
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY}
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports:
+      - "${S3_API_PORT:-9000}:9000"
+      - "${S3_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - rustfs_data:/data
+
+  # Crée le bucket au démarrage s'il n'existe pas, puis s'arrête.
+  rustfs-init:
+    image: amazon/aws-cli:latest
+    container_name: jobcompass-rustfs-init
+    depends_on:
+      - rustfs
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY}
+      AWS_DEFAULT_REGION: us-east-1
+      S3_ENDPOINT: http://rustfs:9000
+      S3_BUCKET: ${S3_BUCKET}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until aws --endpoint-url "$$S3_ENDPOINT" s3api list-buckets > /dev/null 2>&1; do
+          echo "En attente de RustFS..."
+          sleep 2
+        done
+        aws --endpoint-url "$$S3_ENDPOINT" s3api head-bucket --bucket "$$S3_BUCKET" 2> /dev/null \
+          || aws --endpoint-url "$$S3_ENDPOINT" s3 mb "s3://$$S3_BUCKET"
+        echo "Bucket $$S3_BUCKET prêt."
+    restart: "no"
+
+volumes:
+  postgres_data:
+  rustfs_data:
