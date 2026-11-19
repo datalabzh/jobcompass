@@ -9,6 +9,8 @@ Ce document fixe les conventions dbt de JobCompass. Elles s'appuient sur les gui
 **Consigne pour Claude** : appliquer toutes ces règles à chaque modèle, `.yml`, macro ou snapshot écrit
 dans ce projet.
 
+**Langue** : en-têtes de modèles, commentaires SQL et descriptions des `.yml` en anglais.
+
 Dans ce document, `<source>` désigne une source de données (un site : `jobup`…), `<domaine>` un domaine
 métier (`jobs`, `skills`…), `<entite>` l'objet décrit par un modèle (`job_details`, `clusters`…).
 

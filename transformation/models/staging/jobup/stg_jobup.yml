@@ -1,34 +1,22 @@
 version: 2
 
 models:
-  - name: stg_jobup__raw_job_info
-    description: Offres vues sur les pages de résultats, une ligne par offre et par passage.
+  - name: stg_jobup__job_infos
+    description: "Jobs seen on jobup result pages, one row per job and per run."
     columns:
-      - name: run_id
-        data_tests: [not_null]
-      - name: url
-        data_tests: [not_null]
-      - name: seen_at
-        data_tests: [not_null]
-
-  - name: stg_jobup__raw_job_detail
-    description: Fiches téléchargées, une ligne par (url, raw_hash), extraction la plus récente.
-    data_tests:
-      - unique:
-          arguments:
-            column_name: "url || '|' || raw_hash"
-    columns:
-      - name: raw_hash
-        data_tests: [not_null]
-      - name: url
-        data_tests: [not_null]
-      - name: payload_format
+      - name: job_info_id
+        description: "Surrogate key: run_id and url."
         data_tests:
-          - accepted_values:
-              arguments:
-                values: [json_ld, paragraphs]
-      - name: description
-        description: HTML de la source (json_ld) ou paragraphes joints (paragraphs).
-        data_tests: [not_null]
-      - name: title
-        description: Titre du JSON-LD ; nul pour une fiche lue en paragraphes.
+          - unique
+          - not_null
+
+  - name: stg_jobup__job_details
+    description: >-
+      jobup job detail pages, one row per page (url, raw_hash), latest
+      extraction only.
+    columns:
+      - name: job_detail_id
+        description: "Surrogate key of the page: url and raw_hash."
+        data_tests:
+          - unique
+          - not_null

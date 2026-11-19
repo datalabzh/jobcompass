@@ -1,22 +1,23 @@
-# Tables brutes de jobup.ch (bronze), écrites par l'extraction Python.
-# Fichiers : <racine>/<table>/source=jobup/date=<jour>/part-*.parquet, racine = celle
-# du stockage Python : data/test (target test) ou data (target real), relative à la
-# racine du dépôt.
-# union_by_name : des fichiers de versions de contrat différentes se lisent ensemble.
-# hive_partitioning désactivé : source est déjà une colonne, date (jour d'écriture)
-# n'est pas utile.
+# Raw tables of jobup.ch (bronze), written by the Python extraction.
+# Files: <root>/<table>/source=jobup/date=<day>/part-*.parquet, root = the one
+# of the Python storage: data/test (target test) or data (target real),
+# relative to the repository root.
+# union_by_name: files of different contract versions are read together.
+# hive_partitioning disabled: source is already a column, date (write day) is
+# not useful.
 
 version: 2
 
 sources:
   - name: jobup
-    description: Tables brutes de jobup.ch, telles que déposées par l'extraction.
+    description: "Raw tables of jobup.ch, as written by the extraction."
     meta:
       external_location: >-
-        read_parquet('{{ "data/test" if target.name == "test" else "data" }}/{name}/source=jobup/*/*.parquet',
+        read_parquet(
+        '{{ "data/test" if target.name == "test" else "data" }}/{name}/source=jobup/*/*.parquet',
         union_by_name = true, hive_partitioning = false)
     tables:
       - name: raw_job_info
-        description: Une ligne par offre vue sur une page de résultats, par passage (RawJobInfo).
+        description: "One row per job seen on a result page, per run (RawJobInfo)."
       - name: raw_job_detail
-        description: Une ligne par fiche téléchargée, avec son bloc brut (RawJobDetail).
+        description: "One row per detail page downloaded, with its raw block (RawJobDetail)."
