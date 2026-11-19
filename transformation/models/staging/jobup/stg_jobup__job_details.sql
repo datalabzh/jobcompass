@@ -36,7 +36,9 @@ renamed as (
         payload ->> '$.hiringOrganization.name' as company_name,
         case
             when payload_format = 'json_ld' then payload ->> '$.description'
-            else array_to_string(cast(payload::json as varchar[]), chr(10))
+            else array_to_string(
+                cast(cast(payload as json) as varchar[]), chr(10)
+            )
         end as job_description,
 
         ---------- booleans

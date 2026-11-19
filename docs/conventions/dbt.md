@@ -642,39 +642,47 @@ select * from jobs__job_offers
 
 ---
 
-## 9. Outillage local : SQLFluff, pre-commit, dbt-checkpoint, pytest
+## 9. Outillage local : SQLFluff, pre-commit, dbt-checkpoint
 
 Les contrôles tournent avant chaque commit (pre-commit). Les fichiers de configuration sont **dans le
 dépôt** ; ce document dit ce qu'ils vérifient, il ne les recopie pas.
 
 | Fichier | Rôle |
 |---|---|
-| `.pre-commit-config.yaml` (racine) | lance les contrôles ci-dessous, plus ruff pour le Python |
+| `.pre-commit-config.yaml` (racine) | lance les contrôles ci-dessous, plus ruff pour le Python ; versions figées (`rev`) |
 | `transformation/.sqlfluff` | style SQL de dbt Labs, dialecte `duckdb`, templater Jinja |
 | `transformation/.sqlfluffignore` | exclut `target/`, `dbt_packages/`, `logs/`, `macros/`, `snapshots/` |
-| `transformation/sqlfluff_libs/` | stubs Python des macros `dbt_utils` et `dbt` pour le templater Jinja |
+| `transformation/sqlfluff_libs/dbt_utils.py` | macros `dbt_utils` simulées pour le templater Jinja |
 | `.dbt-checkpoint.yaml` (racine) | dossier du projet dbt (`transformation`), suivi d'usage désactivé |
-| `transformation/tests_conventions/test_dbt_conventions.py` | conventions que SQLFluff et dbt-checkpoint ne voient pas |
 
 Ce qui est vérifié :
 
 - **SQLFluff** : minuscules, 4 espaces, 80 caractères, virgules en fin de ligne, `as` explicite, pas
   d'alias de table court, `inner join` explicite, `group by` par position. Le templater Jinja donne des
-  valeurs factices à `ref`, `source`, `config`, `this` : pas besoin de base ni de `dbt compile`.
+  valeurs factices à `ref`, `source`, `config`, `this` (`apply_dbt_builtins`) et aux macros `dbt_utils`
+  (`sqlfluff_libs/`) : pas besoin de base ni de `dbt compile`. SQLFluff tourne dans l'environnement de
+  pre-commit : ce n'est pas une dépendance uv.
+- **dbt parse** (hook local) : rafraîchit le manifest avec le dbt du projet
+  (`uv run --package jobcompass-transformation`).
 - **dbt-checkpoint** (lit `target/manifest.json`, rafraîchi par `dbt parse`) : chaque modèle et chaque
   colonne a une description ; chaque modèle a ses tests `unique` et `not_null` ; noms de modèles conformes
   (`stg_<source>__<entite>`, `int_<domaine>__<entite>`, `<domaine>__<entite>`).
-- **pytest** : un `src_<source>.yml` et un `stg_<source>.yml` par dossier de staging ; modèles de staging
-  nommés d'après leur dossier, sans jointure, au format `source` / `renamed` ; un `.yml` par modèle
-  intermédiaire ou mart ; groupes de colonnes connus et dans l'ordre ; `data_type` présent et nom de
-  colonne conforme à son type (booléen `is_` / `has_`, timestamp `_at`, date `_date`).
+- **Plus tard, si le besoin vient** (plusieurs sites ou développeurs) : un test pytest des conventions
+  que ni SQLFluff ni dbt-checkpoint ne voient (fichiers `src_` / `stg_` par dossier, format `source` /
+  `renamed`, groupes de colonnes dans l'ordre, nom de colonne conforme à son type).
 
 Installation (une fois), puis lancement sur tout le projet :
 
 ```bash
-uv add --dev sqlfluff pre-commit pytest pyyaml
+uv add --dev pre-commit
 uv run pre-commit install
 uv run pre-commit run --all-files
+```
+
+Correction automatique du SQL (hook manuel, jamais lancé au commit) :
+
+```bash
+uv run pre-commit run sqlfluff-fix --all-files --hook-stage manual
 ```
 
 pre-commit ne voit que les fichiers suivis par Git : `git add` les nouveaux fichiers avant.

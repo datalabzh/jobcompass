@@ -1,0 +1,4 @@
+# dbt-checkpoint : projet dbt dans transformation/, suivi d'usage désactivé.
+version: 1
+dbt-project-dir: transformation
+disable-tracking: true

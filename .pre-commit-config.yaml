@@ -1,0 +1,53 @@
+# Contrôles avant chaque commit (docs/conventions/dbt.md, partie 9).
+# Installation : uv run pre-commit install
+# Tout le projet : uv run pre-commit run --all-files
+# Correction SQL : uv run pre-commit run sqlfluff-fix --all-files --hook-stage manual
+# pre-commit ne voit que les fichiers suivis par Git : git add les nouveaux avant.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.5
+    hooks:
+      - id: ruff-check
+
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 4.5.0
+    hooks:
+      - id: sqlfluff-lint
+        files: ^transformation/models/
+      - id: sqlfluff-fix
+        files: ^transformation/models/
+        stages: [manual]
+
+  # Rafraîchit target/manifest.json avec le dbt du projet, lu par les hooks
+  # dbt-checkpoint ci-dessous.
+  - repo: local
+    hooks:
+      - id: dbt-parse
+        name: dbt parse
+        entry: >-
+          uv run --package jobcompass-transformation dbt parse
+          --project-dir transformation --profiles-dir transformation
+        language: system
+        pass_filenames: false
+        files: ^transformation/
+
+  - repo: https://github.com/dbt-checkpoint/dbt-checkpoint
+    rev: v2.1.0
+    hooks:
+      - id: check-model-has-description
+        files: ^transformation/models/
+      - id: check-model-columns-have-desc
+        files: ^transformation/models/
+      - id: check-model-has-tests-by-name
+        args: ["--tests", "unique=1", "not_null=1", "--"]
+        files: ^transformation/models/
+      - id: check-model-name-contract
+        args: ["--pattern", "^stg_[a-z0-9]+__[a-z0-9_]+$", "--"]
+        files: ^transformation/models/staging/
+      - id: check-model-name-contract
+        args: ["--pattern", "^int_[a-z0-9]+__[a-z0-9_]+$", "--"]
+        files: ^transformation/models/intermediate/
+      - id: check-model-name-contract
+        args: ["--pattern", "^[a-z0-9]+__[a-z0-9_]+$", "--"]
+        files: ^transformation/models/marts/
