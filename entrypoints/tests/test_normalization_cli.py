@@ -16,10 +16,13 @@ import pytest
 
 from catalog import Table
 from contracts import ExtractedJob
-from entrypoints.config import Config, NormalizationConfig
+from entrypoints.config.normalization_config import (
+    NormalizationConfig,
+    NormalizationConfigReader,
+)
 from entrypoints.normalization_cli import build_normalization, main, parse_args
 from entrypoints.run_limits import RunLimits, resolve_limits
-from interfaces import NormalizationReport
+from normalization.interfaces import NormalizationReport
 from storage import LocalParquetStorage
 
 
@@ -73,12 +76,17 @@ def test_full_run_normalizes(tmp_path: Path) -> None:
             )
         ],
     )
-    common: NormalizationConfig = Config.load_normalization().model_copy(
-        update={"storage_options": {"data_dir": str(tmp_path)}}
+    common: NormalizationConfig = (
+        NormalizationConfigReader.load_normalization().model_copy(
+            update={"storage_options": {"data_dir": str(tmp_path)}}
+        )
     )
 
     report: NormalizationReport = build_normalization(
-        "jobup", common, Config.load_normalizer("fake"), limits("--full")
+        "jobup",
+        common,
+        NormalizationConfigReader.load_normalizer("fake"),
+        limits("--full"),
     ).execute()
 
     assert (report.normalized, report.is_test) == (1, False)

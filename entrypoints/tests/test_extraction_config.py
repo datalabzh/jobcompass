@@ -1,12 +1,11 @@
 """
-test_config.py
+test_extraction_config.py
 
-Description : tests de la lecture des configurations (Config).
-Règles      : les fichiers versionnés (site.toml de jobup, normalization.toml,
-              normalizer.toml de fake) sont valides et leurs classes sont importées ;
-              un nom inconnu est refusé avec la liste des noms connus ; une classe
-              introuvable ou non conforme à son interface, ou une limite de test
-              absente, est refusée.
+Description : tests de la lecture de la configuration d'un site (SiteConfigReader).
+Règles      : le site.toml versionné de jobup est valide et ses classes sont
+              importées ; un site inconnu est refusé avec la liste des sites
+              connus ; une classe introuvable ou non conforme à son interface, ou
+              une limite de test absente, est refusée.
 """
 
 from typing import Any
@@ -14,15 +13,9 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from entrypoints.config import (
-    Config,
-    ConfigError,
-    NormalizationConfig,
-    NormalizerConfig,
-    SiteConfig,
-)
+from entrypoints.config.config_reader import ConfigError
+from entrypoints.config.extraction_config import SiteConfig, SiteConfigReader
 from extraction.jobup.jobup_extraction import JobupExtraction
-from normalization.fake.fake_normalization import FakeNormalization
 from storage import LocalParquetStorage
 
 EXTRACTION: dict[str, Any] = {
@@ -36,27 +29,17 @@ STORAGE: str = "storage:LocalParquetStorage"
 
 def test_jobup_site() -> None:
     """jobup's site.toml loads, with its classes already imported."""
-    jobup: SiteConfig = Config.load_site("jobup")
+    jobup: SiteConfig = SiteConfigReader.load_site("jobup")
     assert jobup.storage is LocalParquetStorage
     assert jobup.extraction.use_case is JobupExtraction
     assert (jobup.extraction.max_pages, jobup.extraction.max_jobs) == (1, 2)
     assert jobup.extraction.options["categories"]
 
 
-def test_normalization_and_default_normalizer() -> None:
-    """The common file names a default normalizer, whose file loads."""
-    common: NormalizationConfig = Config.load_normalization()
-    assert common.storage is LocalParquetStorage
-    fake: NormalizerConfig = Config.load_normalizer(common.default)
-    assert fake.use_case is FakeNormalization
-
-
-def test_unknown_names_refused() -> None:
-    """An unknown site or normalizer is refused, with the known names."""
+def test_unknown_site_refused() -> None:
+    """An unknown site is refused, with the known names."""
     with pytest.raises(ConfigError, match="known: \\['jobup'"):
-        Config.load_site("nowhere")
-    with pytest.raises(ConfigError, match="known: \\['fake'"):
-        Config.load_normalizer("../fake")
+        SiteConfigReader.load_site("nowhere")
 
 
 def test_unknown_class_refused() -> None:

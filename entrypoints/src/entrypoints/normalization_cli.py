@@ -9,7 +9,8 @@ Règles      : jobcompass-normalization run <source> [--normalizer NOM] [--max-j
               option, le normaliseur (nom de son dossier) ; sans option, celui
               désigné par default dans normalization.toml. La classe et ses
               réglages viennent du normalizer.toml du normaliseur, le stockage du
-              normalization.toml commun, tous deux lus par Config.
+              normalization.toml commun, tous deux lus par
+              NormalizationConfigReader.
               Limites : voir run_limits.py (sans option = test limité par le
               normalizer.toml ; un test ne lit et n'écrit que la zone de test).
               La dernière ligne affichée est le rapport JSON (lu par Dagster).
@@ -24,14 +25,14 @@ import sys
 from datetime import UTC, datetime
 from functools import partial
 
-from entrypoints.config import (
-    Config,
-    ConfigError,
+from entrypoints.config.config_reader import ConfigError
+from entrypoints.config.normalization_config import (
     NormalizationConfig,
+    NormalizationConfigReader,
     NormalizerConfig,
 )
 from entrypoints.run_limits import RunLimits, add_limit_options, resolve_limits
-from interfaces import INormalization, NormalizationReport
+from normalization.interfaces import INormalization, NormalizationReport
 
 LIMITS: list[str] = ["max_jobs"]
 
@@ -75,8 +76,8 @@ def main(argv: list[str] | None = None) -> int:
     """Run the command, print its JSON report; return the exit code."""
     args: argparse.Namespace = parse_args(argv)
     try:
-        common: NormalizationConfig = Config.load_normalization()
-        normalizer: NormalizerConfig = Config.load_normalizer(
+        common: NormalizationConfig = NormalizationConfigReader.load_normalization()
+        normalizer: NormalizerConfig = NormalizationConfigReader.load_normalizer(
             args.normalizer or common.default
         )
         limits: RunLimits = resolve_limits(args, {"max_jobs": normalizer.max_jobs})

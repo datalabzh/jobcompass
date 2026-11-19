@@ -7,7 +7,7 @@ Règles      : jobcompass-extraction run <site> [--max-pages N] [--max-jobs N]
               jobcompass-extraction run <site> --full
               La commande ne connaît que le nom du site : la classe d'extraction du
               site, le stockage et leurs réglages viennent de
-              extraction/<site>/site.toml, lu par Config. Tout le processus
+              extraction/<site>/site.toml, lu par SiteConfigReader. Tout le processus
               appartient au site.
               Limites : voir run_limits.py (sans option = test limité par site.toml).
               Réglages communs à tous les sites : variables EXTRACTION_* (ou .env).
@@ -30,10 +30,11 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from contracts import RunStatus
-from entrypoints.config import Config, ConfigError, SiteConfig
+from entrypoints.config.config_reader import ConfigError
+from entrypoints.config.extraction_config import SiteConfig, SiteConfigReader
 from entrypoints.run_limits import RunLimits, add_limit_options, resolve_limits
 from extraction.http import make_get_page
-from interfaces import ExtractionReport, GetPage, ISiteExtraction
+from extraction.interfaces import ExtractionReport, GetPage, ISiteExtraction
 
 LIMITS: list[str] = ["max_pages", "max_jobs"]
 
@@ -101,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
     settings: ExtractionSettings = ExtractionSettings()
     logging.basicConfig(level=settings.log_level, stream=sys.stderr)
     try:
-        config: SiteConfig = Config.load_site(args.site)
+        config: SiteConfig = SiteConfigReader.load_site(args.site)
         defaults: dict[str, int] = {
             "max_pages": config.extraction.max_pages,
             "max_jobs": config.extraction.max_jobs,
