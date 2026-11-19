@@ -578,7 +578,7 @@ flags:
 ```yaml
 packages:
   - package: dbt-labs/dbt_utils
-    version: 1.2.0
+    version: 1.4.1
 ```
 
 ### Snapshots

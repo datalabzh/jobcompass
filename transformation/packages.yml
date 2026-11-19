@@ -1,0 +1,8 @@
+# Packages dbt du projet, installés par :
+#   uv run --package jobcompass-transformation dbt deps \
+#     --project-dir transformation --profiles-dir transformation
+# Version exacte ; package-lock.yml (généré par dbt deps) est versionné.
+
+packages:
+  - package: dbt-labs/dbt_utils
+    version: 1.4.1
