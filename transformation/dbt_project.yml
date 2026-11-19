@@ -6,20 +6,30 @@
 #   uv run --package jobcompass-transformation dbt build \
 #     --project-dir transformation --profiles-dir transformation \
 #     --target test   (ou --target real)
+# Les vues gardent le chemin relatif de leurs Parquet : les lire depuis la racine.
 
-name: jobcompass
+name: "jobcompass"
 version: "0.1.0"
 config-version: 2
-profile: jobcompass
+
+profile: "jobcompass"
 
 model-paths: ["models"]
-target-path: target
-clean-targets: [target, dbt_packages]
-
-flags:
-  send_anonymous_usage_stats: false  # pas de télémétrie
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+clean-targets:
+  - "target"
+  - "dbt_packages"
 
 models:
   jobcompass:
     staging:
-      +materialized: table  # pas de view : ses chemins relatifs dépendraient du dossier courant
+      +materialized: view
+
+flags:
+  require_generic_test_arguments_property: true
+  validate_macro_args: true
+  send_anonymous_usage_stats: false
