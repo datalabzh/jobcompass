@@ -1,6 +1,6 @@
 # Infrastructure locale de JobCompass.
 # Lancement depuis la racine du dépôt :
-#   docker compose -f infra/docker-compose.yml up -d
+#   docker compose -f infra/docker-compose.yml up -d --wait
 # Les variables sont lues dans infra/.env (modèle : infra/.env.example).
 
 services:
@@ -15,8 +15,10 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Scripts SQL exécutés au premier démarrage (volume vide) uniquement.
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
