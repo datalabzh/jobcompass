@@ -20,6 +20,7 @@ from typing import Any
 import pytest
 
 from contracts import PayloadFormat
+from extraction.interfaces import ParsingError
 from extraction.jobup.jobup_parser import (
     JOB_DETAIL,
     JOB_INFO,
@@ -27,7 +28,6 @@ from extraction.jobup.jobup_parser import (
     JobupListing,
     JobupParser,
 )
-from interfaces import ParsingError
 
 FIXTURES: Path = Path(__file__).parent / "fixtures"
 PARSER: JobupParser = JobupParser()

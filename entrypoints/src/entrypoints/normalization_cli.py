@@ -32,7 +32,7 @@ from entrypoints.config.normalization_config import (
     NormalizerConfig,
 )
 from entrypoints.run_limits import RunLimits, add_limit_options, resolve_limits
-from normalization.interfaces import INormalization, NormalizationReport
+from normalization.interfaces import INormalizationUseCase, NormalizationReport
 
 LIMITS: list[str] = ["max_jobs"]
 
@@ -61,7 +61,7 @@ def build_normalization(
     common: NormalizationConfig,
     normalizer: NormalizerConfig,
     limits: RunLimits,
-) -> INormalization:
+) -> INormalizationUseCase:
     """The normalization class of a normalizer, with its settings."""
     return normalizer.use_case(
         source=source,

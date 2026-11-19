@@ -1,5 +1,5 @@
 """
-test_jobup_extraction.py
+test_jobup_extraction_uc.py
 
 Description : tests de l'extraction complète de jobup.ch.
 Règles      : vrai stockage dans un dossier temporaire, réseau simulé par des pages
@@ -23,8 +23,8 @@ from pydantic import ValidationError
 
 from catalog import Table
 from contracts import PayloadFormat, RunStatus
-from extraction.jobup.jobup_extraction import JobupExtraction
-from interfaces import ExtractionReport, Page
+from extraction.interfaces import ExtractionReport, Page
+from extraction.jobup.jobup_extraction_uc import JobupExtractionUseCase
 from storage import LocalParquetStorage
 
 LISTING: str = "https://www.jobup.ch/fr/emplois/{category}/?page={page}"
@@ -72,9 +72,9 @@ def extraction(
     categories: list[str],
     max_pages: int | None = None,
     max_jobs: int | None = None,
-) -> JobupExtraction:
+) -> JobupExtractionUseCase:
     """A jobup extraction on the fake network."""
-    return JobupExtraction(
+    return JobupExtractionUseCase(
         source="jobup",
         get_page=get_page,
         storage=storage,
@@ -207,7 +207,7 @@ def test_payload_stored_and_signed(storage: LocalParquetStorage) -> None:
     assert [json.loads(r["payload"])["title"] for r in receipts] == ["a", "b"]
     assert {
         (r["payload_format"], r["scraper"], r["scraper_version"]) for r in receipts
-    } == {("json_ld", "jobup_extraction", JobupExtraction.version)}
+    } == {("json_ld", "jobup_extraction", JobupExtractionUseCase.version)}
 
 
 def test_paragraphs_without_json_ld(storage: LocalParquetStorage) -> None:

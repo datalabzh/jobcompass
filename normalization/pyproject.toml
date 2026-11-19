@@ -30,5 +30,5 @@ packages = ["src/normalization"]
 exclude = ["**/tests"]
 
 [tool.pytest.ini_options]
-# src/normalization/<normalizer>/tests/ : each normalizer, next to its code
-testpaths = ["src"]
+# tests/ : common code ; src/normalization/<normalizer>/tests/ : each normalizer
+testpaths = ["tests", "src"]

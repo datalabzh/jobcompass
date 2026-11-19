@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from entrypoints.config.config_reader import FROZEN, ConfigReader, ImportedClass
 from interfaces import IStorage
-from normalization.interfaces import INormalization
+from normalization.interfaces import INormalizationUseCase
 
 
 class NormalizationConfig(BaseModel):
@@ -37,7 +37,9 @@ class NormalizerConfig(BaseModel):
 
     model_config = FROZEN
 
-    use_case: Annotated[type[INormalization], ImportedClass] = Field(alias="class")
+    use_case: Annotated[type[INormalizationUseCase], ImportedClass] = Field(
+        alias="class"
+    )
     max_jobs: int = Field(ge=1, description="Test limit: jobs normalized per run")
 
 

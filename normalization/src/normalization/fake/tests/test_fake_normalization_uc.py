@@ -1,5 +1,5 @@
 """
-test_fake_normalization.py
+test_fake_normalization_uc.py
 
 Description : tests de la normalisation factice.
 Règles      : vrai stockage dans un dossier temporaire, alimenté avec des
@@ -18,8 +18,8 @@ import pytest
 
 from catalog import Table
 from contracts import ExtractedJob
-from interfaces import NormalizationReport
-from normalization.fake.fake_normalization import FakeNormalization
+from normalization.fake.fake_normalization_uc import FakeNormalizationUseCase
+from normalization.interfaces import NormalizationReport
 from storage import LocalParquetStorage
 
 NOW: datetime = datetime(2026, 11, 17, 15, 0, tzinfo=UTC)
@@ -60,9 +60,9 @@ def extracted(
 
 def normalization(
     storage: LocalParquetStorage, max_jobs: int | None = None
-) -> FakeNormalization:
+) -> FakeNormalizationUseCase:
     """A fake normalization of jobup."""
-    return FakeNormalization(
+    return FakeNormalizationUseCase(
         source="jobup",
         storage=storage,
         is_test=storage.is_test,

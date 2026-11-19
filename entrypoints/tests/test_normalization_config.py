@@ -16,7 +16,7 @@ from entrypoints.config.normalization_config import (
     NormalizationConfigReader,
     NormalizerConfig,
 )
-from normalization.fake.fake_normalization import FakeNormalization
+from normalization.fake.fake_normalization_uc import FakeNormalizationUseCase
 from storage import LocalParquetStorage
 
 
@@ -25,7 +25,7 @@ def test_normalization_and_default_normalizer() -> None:
     common: NormalizationConfig = NormalizationConfigReader.load_normalization()
     assert common.storage is LocalParquetStorage
     fake: NormalizerConfig = NormalizationConfigReader.load_normalizer(common.default)
-    assert fake.use_case is FakeNormalization
+    assert fake.use_case is FakeNormalizationUseCase
 
 
 def test_unknown_normalizer_refused() -> None:

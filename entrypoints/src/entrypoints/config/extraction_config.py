@@ -14,7 +14,7 @@ from typing import Annotated, Any
 from pydantic import BaseModel, Field
 
 from entrypoints.config.config_reader import FROZEN, ConfigReader, ImportedClass
-from extraction.interfaces import ISiteExtraction
+from extraction.interfaces import ISiteExtractionUseCase
 from interfaces import IStorage
 
 
@@ -23,7 +23,9 @@ class ExtractionSection(BaseModel):
 
     model_config = FROZEN
 
-    use_case: Annotated[type[ISiteExtraction], ImportedClass] = Field(alias="class")
+    use_case: Annotated[type[ISiteExtractionUseCase], ImportedClass] = Field(
+        alias="class"
+    )
     min_delay_between_requests: float = Field(ge=0)
     max_pages: int = Field(ge=1, description="Test limit: result pages per category")
     max_jobs: int = Field(ge=1, description="Test limit: detail pages downloaded")

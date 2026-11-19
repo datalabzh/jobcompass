@@ -1,12 +1,12 @@
 """
-jobup_extraction.py
+jobup_extraction_uc.py
 
 Description : extraction complète de jobup.ch : va chercher les pages, les envoie
               au parseur, stocke ce qu'il en tire, brut (ADR-0002). Les jobs de
               chaque catégorie, puis la fiche de chaque job encore à télécharger.
-Règles      : JobupExtraction (déclarée dans le site.toml) lance les deux étapes,
+Règles      : JobupExtractionUseCase (déclarée dans le site.toml) lance les deux étapes,
               chacune une classe interne à ce module avec sa méthode execute :
-              _JobupJobInfos (étape 1) et _JobupJobDetails (étape 2).
+              _JobupJobInfosUseCase (étape 1) et _JobupJobDetailsUseCase (étape 2).
               Seules ces classes font des requêtes et écrivent ; le parseur
               (JobupParser, utilisé directement) ne fait que lire le contenu reçu.
               options (site.toml, [extraction.options]) : categories (slugs d'URL),
@@ -47,6 +47,14 @@ from contracts import (
     RunStatus,
     compute_raw_hash,
 )
+from extraction.interfaces import (
+    DetailsSummary,
+    ExtractionReport,
+    GetPage,
+    ISiteExtractionUseCase,
+    Page,
+    PageFetchError,
+)
 from extraction.jobup.jobup_parser import (
     JOB_DETAIL,
     JOB_INFO,
@@ -54,16 +62,7 @@ from extraction.jobup.jobup_parser import (
     JobupListing,
     JobupParser,
 )
-from interfaces import (
-    DetailsSummary,
-    ExtractionReport,
-    GetPage,
-    ISiteExtraction,
-    IStorage,
-    IUseCase,
-    Page,
-    PageFetchError,
-)
+from interfaces import IStorage, IUseCase
 
 LISTING_URL: str = "https://www.jobup.ch/fr/emplois/{category}/?page={page}"
 
@@ -80,7 +79,7 @@ class JobupOptions(BaseModel):
     categories: list[str] = Field(min_length=1, description="Category URL slugs")
 
 
-class JobupExtraction(ISiteExtraction):
+class JobupExtractionUseCase(ISiteExtractionUseCase):
     """Extracts jobup.ch: the jobs of every category, then their detail pages."""
 
     name: str = "jobup_extraction"  # recorded with every page downloaded
@@ -90,7 +89,7 @@ class JobupExtraction(ISiteExtraction):
         """Record the jobs of every category, then download their pages."""
         options: JobupOptions = JobupOptions(**self.options)  # before any request
         parser: JobupParser = JobupParser()
-        logs: list[LogRawJobInfo] = _JobupJobInfos(
+        logs: list[LogRawJobInfo] = _JobupJobInfosUseCase(
             source=self.source,
             get_page=self.get_page,
             storage=self.storage,
@@ -100,7 +99,7 @@ class JobupExtraction(ISiteExtraction):
             now=self.now,
             categories=options.categories,
         ).execute()
-        details: DetailsSummary = _JobupJobDetails(
+        details: DetailsSummary = _JobupJobDetailsUseCase(
             source=self.source,
             get_page=self.get_page,
             storage=self.storage,
@@ -127,7 +126,7 @@ class JobupExtraction(ISiteExtraction):
 # --- 1. raw job infos, category by category, page by page -----------------------
 
 
-class _JobupJobInfos(IUseCase):
+class _JobupJobInfosUseCase(IUseCase):
     """Reads every result page of every category and stores their jobs."""
 
     def __init__(
@@ -230,7 +229,7 @@ class _JobupJobInfos(IUseCase):
 # --- 2. raw job details, one by one ------------------------------------------------
 
 
-class _JobupJobDetails(IUseCase):
+class _JobupJobDetailsUseCase(IUseCase):
     """Downloads and stores the detail pages still to extract, with their block."""
 
     def __init__(

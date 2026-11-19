@@ -1,14 +1,15 @@
 """
 jobup_parser.py
 
-Description : parseur de jobup.ch : lit le contenu des pages que JobupExtraction a
-              téléchargées, sans jamais faire de requête ni rien écrire.
+Description : parseur de jobup.ch : lit le contenu des pages que
+              JobupExtractionUseCase a téléchargées, sans jamais faire de requête
+              ni rien écrire.
 Règles      : une seule méthode publique, parse(kind, content) :
                 'job_info'   page de résultats -> JobupListing
                 'job_detail' fiche d'un job    -> JobupJobDetail
-              Utilisé directement par JobupExtraction : sa version n'est pas
+              Utilisé directement par JobupExtractionUseCase : sa version n'est pas
               enregistrée seule ; changer ce qui est lu ou comment = monter aussi
-              JobupExtraction.version (enregistrée avec chaque page).
+              JobupExtractionUseCase.version (enregistrée avec chaque page).
               Page de résultats : données dans le script `__INIT__ = {...}` :
                 vacancy.results.main.meta     numPages, totalHits
                 vacancy.results.main.results  les jobs de la page (cartes brutes)
@@ -29,7 +30,7 @@ from typing import Any
 from selectolax.lexbor import LexborHTMLParser
 
 from contracts import PayloadFormat
-from interfaces import IParser, ParsingError
+from extraction.interfaces import IParser, ParsingError
 
 JOB_INFO: str = "job_info"  # a result page
 JOB_DETAIL: str = "job_detail"  # the detail page of a job

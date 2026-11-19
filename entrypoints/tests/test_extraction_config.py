@@ -15,11 +15,11 @@ from pydantic import ValidationError
 
 from entrypoints.config.config_reader import ConfigError
 from entrypoints.config.extraction_config import SiteConfig, SiteConfigReader
-from extraction.jobup.jobup_extraction import JobupExtraction
+from extraction.jobup.jobup_extraction_uc import JobupExtractionUseCase
 from storage import LocalParquetStorage
 
 EXTRACTION: dict[str, Any] = {
-    "class": "extraction.jobup.jobup_extraction:JobupExtraction",
+    "class": "extraction.jobup.jobup_extraction_uc:JobupExtractionUseCase",
     "min_delay_between_requests": 1.0,
     "max_pages": 1,
     "max_jobs": 2,
@@ -31,7 +31,7 @@ def test_jobup_site() -> None:
     """jobup's site.toml loads, with its classes already imported."""
     jobup: SiteConfig = SiteConfigReader.load_site("jobup")
     assert jobup.storage is LocalParquetStorage
-    assert jobup.extraction.use_case is JobupExtraction
+    assert jobup.extraction.use_case is JobupExtractionUseCase
     assert (jobup.extraction.max_pages, jobup.extraction.max_jobs) == (1, 2)
     assert jobup.extraction.options["categories"]
 
@@ -52,7 +52,7 @@ def test_class_with_wrong_interface_refused() -> None:
     """A class that does not implement the expected interface is refused."""
     with pytest.raises(ValidationError, match="IStorage"):
         SiteConfig(
-            storage="extraction.jobup.jobup_extraction:JobupExtraction",
+            storage="extraction.jobup.jobup_extraction_uc:JobupExtractionUseCase",
             extraction=EXTRACTION,
         )
 

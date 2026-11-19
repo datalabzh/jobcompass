@@ -1,9 +1,9 @@
 # Normaliseur factice : compétences déclarées + mots-clés d'une liste fixe.
 # Le nom du normaliseur = le nom de ce dossier (option --normalizer fake).
 #
-# class            = classe qui normalise (INormalization), format "module:Classe"
+# class            = classe qui normalise (INormalizationUseCase), format "module:Classe"
 # max_jobs         = garde-fou : nombre de jobs à normaliser 
 #                    Sans option, la commande respecte la limite par défaut ; --full lève les limites.
 
-class = "normalization.fake.fake_normalization:FakeNormalization"
+class = "normalization.fake.fake_normalization_uc:FakeNormalizationUseCase"
 max_jobs = 10

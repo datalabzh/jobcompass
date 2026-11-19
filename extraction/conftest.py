@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from interfaces import Page, PageFetchError
+from extraction.interfaces import Page, PageFetchError
 from storage import LocalParquetStorage
 
 NOW: datetime = datetime(2026, 11, 16, 6, 0, tzinfo=UTC)

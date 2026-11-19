@@ -5,19 +5,19 @@
 # storage_options  = ses paramètres
 #
 # [extraction]
-# class            = classe qui extrait le site (ISiteExtraction)
+# class            = classe qui extrait le site (ISiteExtractionUseCase)
 # min_delay_between_requests = politesse envers le site, en secondes
 # max_pages        = garde-fou : pages de résultats lues par catégorie (test)
 # max_jobs         = garde-fou : pages de détail téléchargées (test)
 #                    Sans option, la commande respecte ces limites ; --full les lève.
-# [extraction.options] = propres à jobup, lues et validées par JobupExtraction
+# [extraction.options] = propres à jobup, lues et validées par JobupExtractionUseCase
 # categories       = catégories à lire (slugs d'URL) ; une catégorie = une ligne
 
 storage = "storage:LocalParquetStorage"
 storage_options = { data_dir = "data" }
 
 [extraction]
-class = "extraction.jobup.jobup_extraction:JobupExtraction"
+class = "extraction.jobup.jobup_extraction_uc:JobupExtractionUseCase"
 min_delay_between_requests = 1.0
 max_pages = 1
 max_jobs = 2

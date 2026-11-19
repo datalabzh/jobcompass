@@ -34,7 +34,7 @@ from entrypoints.config.config_reader import ConfigError
 from entrypoints.config.extraction_config import SiteConfig, SiteConfigReader
 from entrypoints.run_limits import RunLimits, add_limit_options, resolve_limits
 from extraction.http import make_get_page
-from extraction.interfaces import ExtractionReport, GetPage, ISiteExtraction
+from extraction.interfaces import ExtractionReport, GetPage, ISiteExtractionUseCase
 
 LIMITS: list[str] = ["max_pages", "max_jobs"]
 
@@ -70,7 +70,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 def build_extraction(
     site: str, config: SiteConfig, limits: RunLimits, settings: ExtractionSettings
-) -> ISiteExtraction:
+) -> ISiteExtractionUseCase:
     """The extraction class of a site, with the settings of its site.toml."""
     section = config.extraction
     get_page: GetPage = make_get_page(

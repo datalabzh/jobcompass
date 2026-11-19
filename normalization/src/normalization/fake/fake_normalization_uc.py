@@ -1,5 +1,5 @@
 """
-fake_normalization.py
+fake_normalization_uc.py
 
 Description : normalisation factice : produit des compétences plausibles sans NLP,
               pour faire tourner toute la chaîne en attendant le vrai normaliseur
@@ -22,7 +22,7 @@ from typing import Any
 
 from catalog import Table
 from contracts import NormalizedJob, NormalizedSkill, SkillOrigin
-from interfaces import INormalization, NormalizationReport
+from normalization.interfaces import INormalizationUseCase, NormalizationReport
 
 # canonical form -> what it looks like in a text (regular expression)
 KEYWORDS: dict[str, str] = {
@@ -63,7 +63,7 @@ PATTERNS: dict[str, re.Pattern[str]] = {
 }
 
 
-class FakeNormalization(INormalization):
+class FakeNormalizationUseCase(INormalizationUseCase):
     """Fake skills: the declared ones, plus fixed keywords found in the text."""
 
     normalizer: str = "fake_normalization"
