@@ -62,7 +62,9 @@ from extraction.jobup.jobup_parser import (
     JobupListing,
     JobupParser,
 )
-from interfaces import IStorage, IUseCase
+from interfaces import IUseCase
+from storage.interfaces.i_db_storage import IDbStorage
+from storage.interfaces.i_file_storage import IFileStorage
 
 LISTING_URL: str = "https://www.jobup.ch/fr/emplois/{category}/?page={page}"
 
@@ -92,7 +94,7 @@ class JobupExtractionUseCase(ISiteExtractionUseCase):
         logs: list[LogRawJobInfo] = _JobupJobInfosUseCase(
             source=self.source,
             get_page=self.get_page,
-            storage=self.storage,
+            db_storage=self.db_storage,
             parser=parser,
             is_test=self.is_test,
             max_pages=self.max_pages,
@@ -102,7 +104,8 @@ class JobupExtractionUseCase(ISiteExtractionUseCase):
         details: DetailsSummary = _JobupJobDetailsUseCase(
             source=self.source,
             get_page=self.get_page,
-            storage=self.storage,
+            db_storage=self.db_storage,
+            file_storage=self.file_storage,
             parser=parser,
             is_test=self.is_test,
             max_jobs=self.max_jobs,
@@ -133,7 +136,7 @@ class _JobupJobInfosUseCase(IUseCase):
         self,
         source: str,
         get_page: GetPage,
-        storage: IStorage,
+        db_storage: IDbStorage,
         parser: JobupParser,
         is_test: bool,
         max_pages: int | None,
@@ -142,7 +145,7 @@ class _JobupJobInfosUseCase(IUseCase):
     ) -> None:
         self.source: str = source
         self.get_page: GetPage = get_page
-        self.storage: IStorage = storage
+        self.db_storage: IDbStorage = db_storage
         self.parser: JobupParser = parser
         self.is_test: bool = is_test
         self.max_pages: int | None = max_pages
@@ -182,7 +185,7 @@ class _JobupJobInfosUseCase(IUseCase):
             jobs_seen=len(urls),
             distinct_urls=len(set(urls)),
         )
-        self.storage.append(Table.LOG_RAW_JOB_INFO, [log])
+        self.db_storage.append(Table.LOG_RAW_JOB_INFO, [log])
         return log
 
     def _listings(self, category: str) -> Iterator[JobupListing]:
@@ -222,7 +225,7 @@ class _JobupJobInfosUseCase(IUseCase):
             )
             for job in listing.jobs
         ]
-        self.storage.append(Table.RAW_JOB_INFO, infos)
+        self.db_storage.append(Table.RAW_JOB_INFO, infos)
         urls.extend(info.url for info in infos)
 
 
@@ -236,7 +239,8 @@ class _JobupJobDetailsUseCase(IUseCase):
         self,
         source: str,
         get_page: GetPage,
-        storage: IStorage,
+        db_storage: IDbStorage,
+        file_storage: IFileStorage,
         parser: JobupParser,
         is_test: bool,
         max_jobs: int | None,
@@ -247,7 +251,8 @@ class _JobupJobDetailsUseCase(IUseCase):
     ) -> None:
         self.source: str = source
         self.get_page: GetPage = get_page
-        self.storage: IStorage = storage
+        self.db_storage: IDbStorage = db_storage
+        self.file_storage: IFileStorage = file_storage
         self.parser: JobupParser = parser
         self.is_test: bool = is_test
         self.max_jobs: int | None = max_jobs
@@ -271,15 +276,14 @@ class _JobupJobDetailsUseCase(IUseCase):
     def _pending_urls(self) -> tuple[list[str], int]:
         """URLs still to download, in order of first sighting; number set aside."""
         seen: list[dict[str, Any]] = sorted(
-            self.storage.read(Table.RAW_JOB_INFO, self.source),
+            self._read(Table.RAW_JOB_INFO, ["url", "seen_at"]),
             key=lambda row: row["seen_at"],
         )
         downloaded: set[str] = {
-            row["url"] for row in self.storage.read(Table.RAW_JOB_DETAIL, self.source)
+            row["url"] for row in self._read(Table.RAW_JOB_DETAIL, ["url"])
         }
         failures: Counter[str] = Counter(
-            row["url"]
-            for row in self.storage.read(Table.LOG_RAW_JOB_DETAIL, self.source)
+            row["url"] for row in self._read(Table.LOG_RAW_JOB_DETAIL, ["url"])
         )
         to_extract: list[str] = []
         set_aside: int = 0
@@ -292,13 +296,17 @@ class _JobupJobDetailsUseCase(IUseCase):
                 to_extract.append(url)
         return to_extract, set_aside
 
+    def _read(self, table: str, columns: list[str]) -> list[dict[str, Any]]:
+        """The given columns of a table, for this source."""
+        return self.db_storage.read(table, self.source, columns=columns)
+
     def _extract_detail(self, url: str) -> Counter[str]:
         """Download and store one page; what happened, as counts."""
         downloaded: RawJobDetail | LogRawJobDetail = self._download(url)
         if isinstance(downloaded, LogRawJobDetail):
-            self.storage.append(Table.LOG_RAW_JOB_DETAIL, [downloaded])
+            self.db_storage.append(Table.LOG_RAW_JOB_DETAIL, [downloaded])
             return Counter(failed=1)
-        self.storage.append(Table.RAW_JOB_DETAIL, [downloaded])
+        self.db_storage.append(Table.RAW_JOB_DETAIL, [downloaded])
         return Counter(extracted=1)
 
     def _download(self, url: str) -> RawJobDetail | LogRawJobDetail:
@@ -314,8 +322,8 @@ class _JobupJobDetailsUseCase(IUseCase):
             )
         raw_hash: str = compute_raw_hash(answer.content)
         file_name: str = f"{Table.RAW_JOB_DETAIL_HTML}/{raw_hash}.html"
-        if not self.storage.has_file(file_name):
-            self.storage.put_file(file_name, answer.content)
+        if not self.file_storage.has_file(file_name):
+            self.file_storage.put_file(file_name, answer.content)
         detail: object = self.parser.parse(JOB_DETAIL, answer.content)
         if not isinstance(detail, JobupJobDetail):
             raise TypeError(f"{self.parser.name} returned {type(detail).__name__}")

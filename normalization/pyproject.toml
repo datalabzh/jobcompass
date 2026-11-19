@@ -7,12 +7,12 @@ dependencies = [
     "jobcompass-catalog",
     "jobcompass-contracts",
     "jobcompass-interfaces",
+    "jobcompass-storage",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8",
-    "jobcompass-storage",  # the tests use the real local storage
 ]
 
 [tool.uv.sources]

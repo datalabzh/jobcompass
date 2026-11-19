@@ -15,15 +15,20 @@ Règles      : chaque commande a son propre lecteur (extraction_config,
               Tout est validé au chargement : fichier absent, nom inconnu, réglage
               faux ou classe introuvable lèvent ConfigError, avant toute requête et
               toute écriture.
+              Un stockage se décrit par une section : class + options
+              (DbStorageSection, FileStorageSection), partagée par les commandes.
 """
 
 import importlib
 import importlib.resources
 import tomllib
 from importlib.resources.abc import Traversable
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, ValidationError
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationError
+
+from storage.interfaces.i_db_storage import IDbStorage
+from storage.interfaces.i_file_storage import IFileStorage
 
 
 class ConfigError(Exception):
@@ -43,6 +48,24 @@ def _import_class(path: object) -> object:
 
 ImportedClass = BeforeValidator(_import_class)  # "module:Class" -> the class
 FROZEN = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+
+
+class DbStorageSection(BaseModel):
+    """A [db_storage] section: the table storage class and its options."""
+
+    model_config = FROZEN
+
+    storage_class: Annotated[type[IDbStorage], ImportedClass] = Field(alias="class")
+    options: dict[str, Any] = Field(default_factory=dict)
+
+
+class FileStorageSection(BaseModel):
+    """A [file_storage] section: the raw file storage class and its options."""
+
+    model_config = FROZEN
+
+    storage_class: Annotated[type[IFileStorage], ImportedClass] = Field(alias="class")
+    options: dict[str, Any] = Field(default_factory=dict)
 
 
 class ConfigReader:

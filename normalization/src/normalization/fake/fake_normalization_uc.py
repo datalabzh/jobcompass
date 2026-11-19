@@ -80,7 +80,7 @@ class FakeNormalizationUseCase(INormalizationUseCase):
         pending: list[dict[str, Any]] = self._pending_jobs()
         selected: list[dict[str, Any]] = pending[: self.max_jobs]
         for job in selected:
-            self.storage.append(Table.NORMALIZED_JOB, [self._normalize(job)])
+            self.db_storage.append(Table.NORMALIZED_JOB, [self._normalize(job)])
         return NormalizationReport(
             source=self.source,
             is_test=self.is_test,
@@ -93,7 +93,7 @@ class FakeNormalizationUseCase(INormalizationUseCase):
         """Extracted jobs not normalized yet by this class, oldest first."""
         done: set[tuple[str, str]] = {
             (row["raw_hash"], row["parser_version"])
-            for row in self.storage.read(Table.NORMALIZED_JOB, self.source)
+            for row in self.db_storage.read(Table.NORMALIZED_JOB, self.source)
             if (
                 row["normalizer"],
                 row["normalizer_version"],
@@ -108,7 +108,7 @@ class FakeNormalizationUseCase(INormalizationUseCase):
             )
         }
         extracted: list[dict[str, Any]] = sorted(
-            self.storage.read(Table.EXTRACTED_JOB, self.source),
+            self.db_storage.read(Table.EXTRACTED_JOB, self.source),
             key=lambda row: row["parsed_at"],
         )
         return [

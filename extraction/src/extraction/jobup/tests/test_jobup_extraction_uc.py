@@ -2,8 +2,9 @@
 test_jobup_extraction_uc.py
 
 Description : tests de l'extraction complète de jobup.ch.
-Règles      : vrai stockage dans un dossier temporaire, réseau simulé par des pages
-              de résultats construites pour le test. Couvre : chaque page écrite et
+Règles      : vrais stockages (zone de test de Postgres et de RustFS, vidée avant
+              chaque test), réseau simulé par des pages de résultats construites
+              pour le test. Couvre : chaque page écrite et
               journalisée, la limite max_pages, une catégorie en échec qui n'arrête
               pas les autres, la limite max_jobs, le HTML stocké sous son hash avec
               son reçu, les échecs journalisés puis mis de côté, la reprise (rien de
@@ -14,18 +15,18 @@ Règles      : vrai stockage dans un dossier temporaire, réseau simulé par des
 """
 
 import json
-from pathlib import Path
 from typing import Any
 
 import pytest
-from conftest import FakeGetPage, fixed_now, page
+from conftest import FakeGetPage, Storages, fixed_now, page
 from pydantic import ValidationError
 
 from catalog import Table
 from contracts import PayloadFormat, RunStatus
 from extraction.interfaces import ExtractionReport, Page
 from extraction.jobup.jobup_extraction_uc import JobupExtractionUseCase
-from storage import LocalParquetStorage
+from storage.postgres_db_storage import PostgresDbStorage
+from storage.s3_file_storage import S3FileStorage
 
 LISTING: str = "https://www.jobup.ch/fr/emplois/{category}/?page={page}"
 DETAIL: str = "https://www.jobup.ch/fr/emplois/detail/{id}/"
@@ -67,7 +68,7 @@ def site(pages_by_category: dict[str, list[list[str]]]) -> dict[str, Page]:
 
 
 def extraction(
-    storage: LocalParquetStorage,
+    storages: Storages,
     get_page: FakeGetPage,
     categories: list[str],
     max_pages: int | None = None,
@@ -77,8 +78,9 @@ def extraction(
     return JobupExtractionUseCase(
         source="jobup",
         get_page=get_page,
-        storage=storage,
-        is_test=storage.is_test,
+        db_storage=storages.db,
+        file_storage=storages.files,
+        is_test=storages.db.is_test,
         max_pages=max_pages,
         max_jobs=max_jobs,
         max_failures=2,
@@ -87,17 +89,17 @@ def extraction(
     )
 
 
-def test_pages_written_and_logged(storage: LocalParquetStorage) -> None:
+def test_pages_written_and_logged(storages: Storages) -> None:
     """Every page is written; the category log is completed with its counts."""
     get_page: FakeGetPage = FakeGetPage(site({"it": [["a", "b"], ["c"]]}))
 
     report: ExtractionReport = extraction(
-        storage, get_page, ["it"], max_jobs=0
+        storages, get_page, ["it"], max_jobs=0
     ).execute()
 
     assert report.status == RunStatus.COMPLETED
-    assert len(storage.read(Table.RAW_JOB_INFO, "jobup")) == 3
-    (log,) = storage.read(Table.LOG_RAW_JOB_INFO, "jobup")
+    assert len(storages.db.read(Table.RAW_JOB_INFO, "jobup")) == 3
+    (log,) = storages.db.read(Table.LOG_RAW_JOB_INFO, "jobup")
     assert (log["status"], log["pages_read"], log["distinct_urls"]) == (
         "completed",
         2,
@@ -105,23 +107,23 @@ def test_pages_written_and_logged(storage: LocalParquetStorage) -> None:
     )
 
 
-def test_max_pages_stops_reading(storage: LocalParquetStorage) -> None:
+def test_max_pages_stops_reading(storages: Storages) -> None:
     """With max_pages=1 the second result page is never requested."""
     get_page: FakeGetPage = FakeGetPage(site({"it": [["a", "b"], ["c"]]}))
 
-    extraction(storage, get_page, ["it"], max_pages=1, max_jobs=0).execute()
+    extraction(storages, get_page, ["it"], max_pages=1, max_jobs=0).execute()
 
     assert LISTING.format(category="it", page=2) not in get_page.requested
-    assert len(storage.read(Table.RAW_JOB_INFO, "jobup")) == 2
+    assert len(storages.db.read(Table.RAW_JOB_INFO, "jobup")) == 2
 
 
-def test_failed_category_does_not_stop_others(storage: LocalParquetStorage) -> None:
+def test_failed_category_does_not_stop_others(storages: Storages) -> None:
     """A blocked category is logged as failed; the next one is still read."""
     pages: dict[str, Page] = site({"it": [["a"], ["b"]], "finance": [["c"]]})
     pages[LISTING.format(category="it", page=2)] = page(status=403)
 
     report: ExtractionReport = extraction(
-        storage, FakeGetPage(pages), ["it", "finance"], max_jobs=0
+        storages, FakeGetPage(pages), ["it", "finance"], max_jobs=0
     ).execute()
 
     assert report.status == RunStatus.FAILED
@@ -130,97 +132,108 @@ def test_failed_category_does_not_stop_others(storage: LocalParquetStorage) -> N
         RunStatus.COMPLETED,
     ]
     assert "HTTP 403" in (report.listings[0].error or "")
-    assert len(storage.read(Table.RAW_JOB_INFO, "jobup")) == 2  # a, then c
+    assert len(storages.db.read(Table.RAW_JOB_INFO, "jobup")) == 2  # a, then c
 
 
-def test_details_limited_and_stored(storage: LocalParquetStorage) -> None:
+def test_details_limited_and_stored(storages: Storages) -> None:
     """max_jobs limits the downloads; each page is stored with its receipt."""
     get_page: FakeGetPage = FakeGetPage(site({"it": [["a", "b", "c"]]}))
 
     report: ExtractionReport = extraction(
-        storage, get_page, ["it"], max_jobs=2
+        storages, get_page, ["it"], max_jobs=2
     ).execute()
 
     assert report.details.extracted == 2
-    receipts: list[dict[str, Any]] = storage.read(Table.RAW_JOB_DETAIL, "jobup")
+    receipts: list[dict[str, Any]] = storages.db.read(Table.RAW_JOB_DETAIL, "jobup")
     assert [r["url"] for r in receipts] == [
         DETAIL.format(id="a"),
         DETAIL.format(id="b"),
     ]
     assert all(
-        storage.has_file(f"{Table.RAW_JOB_DETAIL_HTML}/{r['raw_hash']}.html")
+        storages.files.has_file(f"{Table.RAW_JOB_DETAIL_HTML}/{r['raw_hash']}.html")
         for r in receipts
     )
 
 
-def test_nothing_downloaded_twice(storage: LocalParquetStorage) -> None:
+def test_nothing_downloaded_twice(storages: Storages) -> None:
     """A second run only downloads what is still to extract."""
     pages: dict[str, Page] = site({"it": [["a", "b"]]})
-    extraction(storage, FakeGetPage(pages), ["it"], max_jobs=1).execute()
+    extraction(storages, FakeGetPage(pages), ["it"], max_jobs=1).execute()
     get_page: FakeGetPage = FakeGetPage(pages)
 
-    extraction(storage, get_page, ["it"]).execute()
+    extraction(storages, get_page, ["it"]).execute()
 
     assert [url for url in get_page.requested if "detail" in url] == [
         DETAIL.format(id="b")
     ]
 
 
-def test_failures_logged_then_set_aside(storage: LocalParquetStorage) -> None:
+def test_failures_logged_then_set_aside(storages: Storages) -> None:
     """A failing job is logged each time, then set aside after max_failures."""
     pages: dict[str, Page] = site({"it": [["a"]]})
     pages[DETAIL.format(id="a")] = page(status=404)
     for _ in range(2):
-        extraction(storage, FakeGetPage(pages), ["it"]).execute()
+        extraction(storages, FakeGetPage(pages), ["it"]).execute()
 
-    report: ExtractionReport = extraction(storage, FakeGetPage(pages), ["it"]).execute()
+    report: ExtractionReport = extraction(
+        storages, FakeGetPage(pages), ["it"]
+    ).execute()
 
-    failures: list[dict[str, Any]] = storage.read(Table.LOG_RAW_JOB_DETAIL, "jobup")
+    failures: list[dict[str, Any]] = storages.db.read(Table.LOG_RAW_JOB_DETAIL, "jobup")
     assert [f["error"] for f in failures] == ["HTTP 404", "HTTP 404"]
     assert (report.details.failed, report.details.set_aside) == (0, 1)
 
 
-def test_test_run_writes_apart(tmp_path: Path) -> None:
+def test_test_run_writes_apart(storages: Storages) -> None:
     """A test run writes its records, flagged is_test, in the test zone only."""
-    real: LocalParquetStorage = LocalParquetStorage(is_test=False, data_dir=tmp_path)
-    test: LocalParquetStorage = LocalParquetStorage(is_test=True, data_dir=tmp_path)
+    extraction(storages, FakeGetPage(site({"it": [["a"]]})), ["it"]).execute()
 
-    extraction(test, FakeGetPage(site({"it": [["a"]]})), ["it"]).execute()
+    (detail,) = storages.db.read(Table.RAW_JOB_DETAIL, "jobup")
+    assert detail["is_test"]
+    (info,) = storages.db.read(Table.RAW_JOB_INFO, "jobup", columns=["run_id"])
+    real_runs: set[str] = {
+        row["run_id"]
+        for row in PostgresDbStorage(is_test=False).read(
+            Table.RAW_JOB_INFO, "jobup", columns=["run_id"]
+        )
+    }
+    assert info["run_id"] not in real_runs
+    html: str = f"{Table.RAW_JOB_DETAIL_HTML}/{detail['raw_hash']}.html"
+    assert not S3FileStorage(is_test=False).has_file(html)
 
-    assert real.read(Table.RAW_JOB_INFO, "jobup") == []
-    assert [r["is_test"] for r in test.read(Table.RAW_JOB_DETAIL, "jobup")] == [True]
 
-
-def test_wrong_options_refused(storage: LocalParquetStorage) -> None:
+def test_wrong_options_refused(storages: Storages) -> None:
     """Options without category are refused before any request."""
     get_page: FakeGetPage = FakeGetPage({})
     with pytest.raises(ValidationError):
-        extraction(storage, get_page, []).execute()
+        extraction(storages, get_page, []).execute()
     assert get_page.requested == []
 
 
-def test_payload_stored_and_signed(storage: LocalParquetStorage) -> None:
+def test_payload_stored_and_signed(storages: Storages) -> None:
     """Each page is stored with its JSON-LD block and the scraper that read it."""
-    extraction(storage, FakeGetPage(site({"it": [["a", "b"]]})), ["it"]).execute()
+    extraction(storages, FakeGetPage(site({"it": [["a", "b"]]})), ["it"]).execute()
 
-    receipts: list[dict[str, Any]] = storage.read(Table.RAW_JOB_DETAIL, "jobup")
-    assert [json.loads(r["payload"])["title"] for r in receipts] == ["a", "b"]
+    receipts: list[dict[str, Any]] = storages.db.read(Table.RAW_JOB_DETAIL, "jobup")
+    assert sorted(r["payload"]["title"] for r in receipts) == ["a", "b"]
     assert {
         (r["payload_format"], r["scraper"], r["scraper_version"]) for r in receipts
     } == {("json_ld", "jobup_extraction", JobupExtractionUseCase.version)}
 
 
-def test_paragraphs_without_json_ld(storage: LocalParquetStorage) -> None:
+def test_paragraphs_without_json_ld(storages: Storages) -> None:
     """A page without JSON-LD is stored with its paragraphs: nothing is lost."""
     pages: dict[str, Page] = site({"it": [["a"]]})
     pages[DETAIL.format(id="a")] = page(content=b"<html><p>Data Engineer</p></html>")
 
-    report: ExtractionReport = extraction(storage, FakeGetPage(pages), ["it"]).execute()
+    report: ExtractionReport = extraction(
+        storages, FakeGetPage(pages), ["it"]
+    ).execute()
 
     assert report.details.extracted == 1
-    (receipt,) = storage.read(Table.RAW_JOB_DETAIL, "jobup")
+    (receipt,) = storages.db.read(Table.RAW_JOB_DETAIL, "jobup")
     assert receipt["payload_format"] == PayloadFormat.PARAGRAPHS
-    assert json.loads(receipt["payload"]) == ["Data Engineer"]
+    assert receipt["payload"] == ["Data Engineer"]
 
 
 class CrashingGetPage(FakeGetPage):
@@ -237,22 +250,22 @@ class CrashingGetPage(FakeGetPage):
         return super().__call__(url)
 
 
-def test_crash_keeps_what_was_written(storage: LocalParquetStorage) -> None:
+def test_crash_keeps_what_was_written(storages: Storages) -> None:
     """Jobs are written one by one: a crash on the 3rd keeps the first two."""
     pages: dict[str, Page] = site({"it": [["a", "b", "c", "d"]]})
     crashing: CrashingGetPage = CrashingGetPage(pages, DETAIL.format(id="c"))
     with pytest.raises(RuntimeError):
-        extraction(storage, crashing, ["it"]).execute()
+        extraction(storages, crashing, ["it"]).execute()
 
     get_page: FakeGetPage = FakeGetPage(pages)
-    extraction(storage, get_page, ["it"]).execute()
+    extraction(storages, get_page, ["it"]).execute()
 
     assert [url for url in get_page.requested if "detail" in url] == [
         DETAIL.format(id="c"),
         DETAIL.format(id="d"),
     ]
-    receipts: list[dict[str, Any]] = storage.read(Table.RAW_JOB_DETAIL, "jobup")
-    assert sorted(json.loads(r["payload"])["title"] for r in receipts) == [
+    receipts: list[dict[str, Any]] = storages.db.read(Table.RAW_JOB_DETAIL, "jobup")
+    assert sorted(r["payload"]["title"] for r in receipts) == [
         "a",
         "b",
         "c",

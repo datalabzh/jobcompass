@@ -13,12 +13,16 @@ Règles      : NormalizationConfigReader.load_normalization()      -> commune
 
 import importlib.resources
 from importlib.resources.abc import Traversable
-from typing import Annotated, Any
+from typing import Annotated
 
 from pydantic import BaseModel, Field
 
-from entrypoints.config.config_reader import FROZEN, ConfigReader, ImportedClass
-from interfaces import IStorage
+from entrypoints.config.config_reader import (
+    FROZEN,
+    ConfigReader,
+    DbStorageSection,
+    ImportedClass,
+)
 from normalization.interfaces import INormalizationUseCase
 
 
@@ -27,9 +31,8 @@ class NormalizationConfig(BaseModel):
 
     model_config = FROZEN
 
-    storage: Annotated[type[IStorage], ImportedClass]
-    storage_options: dict[str, Any] = Field(default_factory=dict)
     default: str = Field(description="Normalizer used without --normalizer")
+    db_storage: DbStorageSection
 
 
 class NormalizerConfig(BaseModel):

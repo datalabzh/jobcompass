@@ -3,18 +3,21 @@ conftest.py
 
 Description : outils de test partagés par tous les tests de l'extraction (commun
               et sites), à la racine de la brique pour être vus partout.
-Règles      : les tests utilisent le vrai LocalParquetStorage dans un dossier
-              temporaire (pas de faux stockage) ; seul le réseau est simulé
-              (FakeGetPage).
+Règles      : les tests utilisent les vrais stockages (PostgresDbStorage et
+              S3FileStorage, réunis dans Storages), contre les conteneurs de infra/
+              (docker compose -f infra/docker-compose.yml up -d --wait) ; pas de faux
+              stockage. Ils écrivent dans la zone de test, vidée avant chaque test.
+              Seul le réseau est simulé (FakeGetPage).
 """
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 
 import pytest
 
 from extraction.interfaces import Page, PageFetchError
-from storage import LocalParquetStorage
+from storage.postgres_db_storage import PostgresDbStorage
+from storage.s3_file_storage import S3FileStorage
 
 NOW: datetime = datetime(2026, 11, 16, 6, 0, tzinfo=UTC)
 
@@ -24,10 +27,23 @@ def fixed_now() -> datetime:
     return NOW
 
 
+@dataclass(frozen=True)
+class Storages:
+    """The two real storages of a test run: tables and raw files."""
+
+    db: PostgresDbStorage
+    files: S3FileStorage
+
+
 @pytest.fixture
-def storage(tmp_path: Path) -> LocalParquetStorage:
-    """A real storage for real runs, writing into the test's temporary folder."""
-    return LocalParquetStorage(is_test=False, data_dir=tmp_path)
+def storages() -> Storages:
+    """The test zones of the real storages, emptied before the test."""
+    test: Storages = Storages(
+        db=PostgresDbStorage(is_test=True), files=S3FileStorage(is_test=True)
+    )
+    test.db.clear_test_zone()
+    test.files.clear_test_zone()
+    return test
 
 
 def page(status: int = 200, content: bytes = b"<html>job</html>") -> Page:

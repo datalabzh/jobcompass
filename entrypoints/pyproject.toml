@@ -5,7 +5,7 @@ description = "Entry points of the JobCompass bricks (command lines today)"
 requires-python = ">=3.12"
 dependencies = [
     "jobcompass-contracts",
-    "jobcompass-interfaces",
+    "jobcompass-storage",  # the configurations name storage classes
     "pydantic>=2.10",
     "pydantic-settings>=2.6",
 ]
@@ -13,14 +13,8 @@ dependencies = [
 # Each brick is optional: installing the extraction command does not install the
 # NLP of the normalization (and the other way round).
 [project.optional-dependencies]
-extraction = [
-    "jobcompass-extraction",
-    "jobcompass-storage",
-]
-normalization = [
-    "jobcompass-normalization",
-    "jobcompass-storage",
-]
+extraction = ["jobcompass-extraction"]
+normalization = ["jobcompass-normalization"]
 
 [project.scripts]
 jobcompass-extraction = "entrypoints.extraction_cli:main"
@@ -32,13 +26,11 @@ dev = [
     "jobcompass-catalog",  # the tests write tables of the catalog
     "jobcompass-extraction",  # the tests cover both commands
     "jobcompass-normalization",
-    "jobcompass-storage",
 ]
 
 [tool.uv.sources]
 jobcompass-catalog = { workspace = true }
 jobcompass-contracts = { workspace = true }
-jobcompass-interfaces = { workspace = true }
 jobcompass-extraction = { workspace = true }
 jobcompass-normalization = { workspace = true }
 jobcompass-storage = { workspace = true }

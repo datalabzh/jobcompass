@@ -17,13 +17,13 @@ from entrypoints.config.normalization_config import (
     NormalizerConfig,
 )
 from normalization.fake.fake_normalization_uc import FakeNormalizationUseCase
-from storage import LocalParquetStorage
+from storage.postgres_db_storage import PostgresDbStorage
 
 
 def test_normalization_and_default_normalizer() -> None:
     """The common file names a default normalizer, whose file loads."""
     common: NormalizationConfig = NormalizationConfigReader.load_normalization()
-    assert common.storage is LocalParquetStorage
+    assert common.db_storage.storage_class is PostgresDbStorage
     fake: NormalizerConfig = NormalizationConfigReader.load_normalizer(common.default)
     assert fake.use_case is FakeNormalizationUseCase
 

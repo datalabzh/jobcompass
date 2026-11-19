@@ -1,8 +1,11 @@
 # Configuration du site jobup.ch : tout ce qui concerne jobup se règle ici.
 # La commande ne reçoit que le nom du site (= le nom de ce dossier).
 #
-# storage          = classe qui stocke les données (IStorage), format "module:Classe"
-# storage_options  = ses paramètres
+# [db_storage]     = stockage des tables (IDbStorage)
+# [file_storage]   = stockage des fichiers bruts, le HTML (IFileStorage)
+#   class          = la classe, format "module:Classe"
+#   options        = ses paramètres (aucun pour Postgres et RustFS : la connexion
+#                    est lue dans infra/.env par la classe)
 #
 # [extraction]
 # class            = classe qui extrait le site (ISiteExtractionUseCase)
@@ -13,8 +16,11 @@
 # [extraction.options] = propres à jobup, lues et validées par JobupExtractionUseCase
 # categories       = catégories à lire (slugs d'URL) ; une catégorie = une ligne
 
-storage = "storage:LocalParquetStorage"
-storage_options = { data_dir = "data" }
+[db_storage]
+class = "storage.postgres_db_storage:PostgresDbStorage"
+
+[file_storage]
+class = "storage.s3_file_storage:S3FileStorage"
 
 [extraction]
 class = "extraction.jobup.jobup_extraction_uc:JobupExtractionUseCase"

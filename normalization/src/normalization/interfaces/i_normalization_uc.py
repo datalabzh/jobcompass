@@ -5,8 +5,8 @@ Description : ce que fournit toute normalisation : une classe, avec une seule
               méthode publique, execute.
 Règles      : commune à tous les sites : lit la table extracted_job d'une source et
               écrit normalized_job (contrats ExtractedJob -> NormalizedJob).
-              Fourni à la création : source, storage, is_test, max_jobs (None = sans
-              limite), now.
+              Fourni à la création : source, db_storage, is_test, max_jobs
+              (None = sans limite), now.
               Jobs à normaliser = jobs extraits - déjà normalisés par ce
               normaliseur, ce modèle et leurs versions ; traités et écrits un par un.
               Chaque NormalizedJob porte la signature du normaliseur et du modèle
@@ -25,7 +25,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-from interfaces import IStorage, IUseCase
+from interfaces import IUseCase
+from storage.interfaces.i_db_storage import IDbStorage
 
 SIGNATURE: tuple[str, ...] = (
     "normalizer",
@@ -70,13 +71,13 @@ class INormalizationUseCase(IUseCase):
     def __init__(
         self,
         source: str,
-        storage: IStorage,
+        db_storage: IDbStorage,
         is_test: bool,
         max_jobs: int | None,
         now: Callable[[], datetime],
     ) -> None:
         self.source: str = source
-        self.storage: IStorage = storage
+        self.db_storage: IDbStorage = db_storage
         self.is_test: bool = is_test
         self.max_jobs: int | None = max_jobs
         self.now: Callable[[], datetime] = now

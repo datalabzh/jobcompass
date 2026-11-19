@@ -25,7 +25,7 @@ import sys
 from datetime import UTC, datetime
 from functools import partial
 
-from entrypoints.config.config_reader import ConfigError
+from entrypoints.config.config_reader import ConfigError, DbStorageSection
 from entrypoints.config.normalization_config import (
     NormalizationConfig,
     NormalizationConfigReader,
@@ -63,9 +63,10 @@ def build_normalization(
     limits: RunLimits,
 ) -> INormalizationUseCase:
     """The normalization class of a normalizer, with its settings."""
+    db: DbStorageSection = common.db_storage
     return normalizer.use_case(
         source=source,
-        storage=common.storage(is_test=limits.is_test, **common.storage_options),
+        db_storage=db.storage_class(is_test=limits.is_test, **db.options),
         is_test=limits.is_test,
         max_jobs=limits["max_jobs"],
         now=partial(datetime.now, UTC),

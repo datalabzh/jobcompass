@@ -1,13 +1,10 @@
 """
 __init__.py
 
-Description : implémentations du stockage partagé par les briques JobCompass
-              (l'interface IStorage est dans interfaces).
-Règles      : les briques importent uniquement d'ici (from storage import ...),
-              jamais depuis les modules : l'organisation interne peut changer
-              librement.
+Description : stockage partagé par les briques JobCompass : ses interfaces
+              (storage/interfaces) et ses implémentations, un fichier chacune.
+Règles      : volontairement vide : on importe chaque classe par son chemin
+              (from storage.s3_file_storage import S3FileStorage), et les TOML la
+              désignent de même ("storage.s3_file_storage:S3FileStorage").
+              Importer une interface ne charge ainsi aucune implémentation.
 """
-
-from storage.local_parquet_storage import LocalParquetStorage
-
-__all__ = ["LocalParquetStorage"]

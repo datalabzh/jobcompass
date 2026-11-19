@@ -16,6 +16,7 @@ import pytest
 
 from catalog import Table
 from contracts import ExtractedJob
+from entrypoints.config.config_reader import DbStorageSection
 from entrypoints.config.normalization_config import (
     NormalizationConfig,
     NormalizationConfigReader,
@@ -23,7 +24,7 @@ from entrypoints.config.normalization_config import (
 from entrypoints.normalization_cli import build_normalization, main, parse_args
 from entrypoints.run_limits import RunLimits, resolve_limits
 from normalization.interfaces import NormalizationReport
-from storage import LocalParquetStorage
+from storage.postgres_db_storage import PostgresDbStorage
 
 
 def limits(*argv: str) -> RunLimits:
@@ -53,7 +54,7 @@ def test_limits() -> None:
 
 def test_full_run_normalizes(tmp_path: Path) -> None:
     """A full run normalizes the extracted jobs of the source, as real data."""
-    storage: LocalParquetStorage = LocalParquetStorage(is_test=False, data_dir=tmp_path)
+    storage: PostgresDbStorage = PostgresDbStorage(is_test=True)  # rewritten at step 3
     storage.append(
         Table.EXTRACTED_JOB,
         [
@@ -76,11 +77,11 @@ def test_full_run_normalizes(tmp_path: Path) -> None:
             )
         ],
     )
-    common: NormalizationConfig = (
-        NormalizationConfigReader.load_normalization().model_copy(
-            update={"storage_options": {"data_dir": str(tmp_path)}}
-        )
+    loaded: NormalizationConfig = NormalizationConfigReader.load_normalization()
+    db_storage: DbStorageSection = loaded.db_storage.model_copy(
+        update={"options": {"data_dir": str(tmp_path)}}
     )
+    common: NormalizationConfig = loaded.model_copy(update={"db_storage": db_storage})
 
     report: NormalizationReport = build_normalization(
         "jobup",

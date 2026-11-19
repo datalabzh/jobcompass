@@ -20,15 +20,15 @@ from catalog import Table
 from contracts import ExtractedJob
 from normalization.fake.fake_normalization_uc import FakeNormalizationUseCase
 from normalization.interfaces import NormalizationReport
-from storage import LocalParquetStorage
+from storage.postgres_db_storage import PostgresDbStorage
 
 NOW: datetime = datetime(2026, 11, 17, 15, 0, tzinfo=UTC)
 
 
 @pytest.fixture
-def storage(tmp_path: Path) -> LocalParquetStorage:
+def storage(tmp_path: Path) -> PostgresDbStorage:
     """A real storage for real runs, writing into the test's temporary folder."""
-    return LocalParquetStorage(is_test=False, data_dir=tmp_path)
+    return PostgresDbStorage(is_test=True)  # rewritten at step 3
 
 
 def extracted(
@@ -59,19 +59,19 @@ def extracted(
 
 
 def normalization(
-    storage: LocalParquetStorage, max_jobs: int | None = None
+    storage: PostgresDbStorage, max_jobs: int | None = None
 ) -> FakeNormalizationUseCase:
     """A fake normalization of jobup."""
     return FakeNormalizationUseCase(
         source="jobup",
-        storage=storage,
+        db_storage=storage,
         is_test=storage.is_test,
         max_jobs=max_jobs,
         now=lambda: NOW,
     )
 
 
-def skills(storage: LocalParquetStorage) -> list[list[tuple[str, str, str]]]:
+def skills(storage: PostgresDbStorage) -> list[list[tuple[str, str, str]]]:
     """(raw, canonical, origin) of the skills of every normalized job."""
     return [
         [(s["raw"], s["canonical"], s["origin"]) for s in row["skills"]]
@@ -79,7 +79,7 @@ def skills(storage: LocalParquetStorage) -> list[list[tuple[str, str, str]]]:
     ]
 
 
-def test_declared_and_detected_skills(storage: LocalParquetStorage) -> None:
+def test_declared_and_detected_skills(storage: PostgresDbStorage) -> None:
     """Declared skills are kept; keywords are found whatever their case, once."""
     storage.append(
         Table.EXTRACTED_JOB,
@@ -104,7 +104,7 @@ def test_declared_and_detected_skills(storage: LocalParquetStorage) -> None:
     ]
 
 
-def test_whole_words_only(storage: LocalParquetStorage) -> None:
+def test_whole_words_only(storage: PostgresDbStorage) -> None:
     """A keyword inside another word is not a skill (SAP in 'SAPEUR', git)."""
     storage.append(
         Table.EXTRACTED_JOB,
@@ -116,7 +116,7 @@ def test_whole_words_only(storage: LocalParquetStorage) -> None:
     assert [canonical for _, canonical, _ in skills(storage)[0]] == ["c#", ".net"]
 
 
-def test_signature_recorded(storage: LocalParquetStorage) -> None:
+def test_signature_recorded(storage: PostgresDbStorage) -> None:
     """Each normalized job carries its input and the signature that made it."""
     storage.append(Table.EXTRACTED_JOB, [extracted("a")])
 
@@ -128,7 +128,7 @@ def test_signature_recorded(storage: LocalParquetStorage) -> None:
     assert row["normalizer_description"].startswith("Fake skills")
 
 
-def test_max_jobs_then_resume(storage: LocalParquetStorage) -> None:
+def test_max_jobs_then_resume(storage: PostgresDbStorage) -> None:
     """max_jobs limits a run; the next run only does what remains."""
     storage.append(
         Table.EXTRACTED_JOB, [extracted("a"), extracted("b"), extracted("c")]
@@ -143,7 +143,7 @@ def test_max_jobs_then_resume(storage: LocalParquetStorage) -> None:
     assert sorted(row["raw_hash"][0] for row in rows) == ["a", "b", "c"]
 
 
-def test_new_parser_version_normalized_again(storage: LocalParquetStorage) -> None:
+def test_new_parser_version_normalized_again(storage: PostgresDbStorage) -> None:
     """A page parsed by a new parser version is a new job to normalize."""
     storage.append(Table.EXTRACTED_JOB, [extracted("a")])
     normalization(storage).execute()
@@ -157,8 +157,8 @@ def test_new_parser_version_normalized_again(storage: LocalParquetStorage) -> No
 
 def test_test_run_reads_and_writes_apart(tmp_path: Path) -> None:
     """A test run only sees test jobs, and writes in the test zone."""
-    real: LocalParquetStorage = LocalParquetStorage(is_test=False, data_dir=tmp_path)
-    test: LocalParquetStorage = LocalParquetStorage(is_test=True, data_dir=tmp_path)
+    real: PostgresDbStorage = PostgresDbStorage(is_test=False, data_dir=tmp_path)
+    test: PostgresDbStorage = PostgresDbStorage(is_test=True, data_dir=tmp_path)
     real.append(Table.EXTRACTED_JOB, [extracted("a")])
     test.append(Table.EXTRACTED_JOB, [extracted("b", is_test=True)])
 

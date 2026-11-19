@@ -7,7 +7,8 @@ Règles      : chaque site possède tout son processus (comment il découpe ses 
               comment il lit ses pages, ce qu'il journalise) : rien n'est imposé ici
               au-delà de ce que le point d'entrée doit fournir et recevoir.
               Fourni à la création, à l'identique pour tous les sites : source,
-              get_page, storage, is_test, les garde-fous max_pages / max_jobs (None =
+              get_page, db_storage (tables), file_storage (fichiers bruts),
+              is_test, les garde-fous max_pages / max_jobs (None =
               sans limite), max_failures, now, et options = la table
               [extraction.options] du site.toml, que le site valide lui-même.
               Le site écrit ses données lui-même, dans les tables communes
@@ -31,7 +32,9 @@ from typing import Any
 
 from contracts import LogRawJobInfo, RunStatus
 from extraction.interfaces.i_get_page import GetPage
-from interfaces import IStorage, IUseCase
+from interfaces import IUseCase
+from storage.interfaces.i_db_storage import IDbStorage
+from storage.interfaces.i_file_storage import IFileStorage
 
 
 @dataclass(frozen=True)
@@ -63,7 +66,8 @@ class ISiteExtractionUseCase(IUseCase):
         self,
         source: str,
         get_page: GetPage,
-        storage: IStorage,
+        db_storage: IDbStorage,
+        file_storage: IFileStorage,
         is_test: bool,
         max_pages: int | None,
         max_jobs: int | None,
@@ -73,7 +77,8 @@ class ISiteExtractionUseCase(IUseCase):
     ) -> None:
         self.source: str = source
         self.get_page: GetPage = get_page
-        self.storage: IStorage = storage
+        self.db_storage: IDbStorage = db_storage
+        self.file_storage: IFileStorage = file_storage
         self.is_test: bool = is_test
         self.max_pages: int | None = max_pages
         self.max_jobs: int | None = max_jobs

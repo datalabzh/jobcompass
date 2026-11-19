@@ -30,7 +30,11 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from contracts import RunStatus
-from entrypoints.config.config_reader import ConfigError
+from entrypoints.config.config_reader import (
+    ConfigError,
+    DbStorageSection,
+    FileStorageSection,
+)
 from entrypoints.config.extraction_config import SiteConfig, SiteConfigReader
 from entrypoints.run_limits import RunLimits, add_limit_options, resolve_limits
 from extraction.http import make_get_page
@@ -73,13 +77,16 @@ def build_extraction(
 ) -> ISiteExtractionUseCase:
     """The extraction class of a site, with the settings of its site.toml."""
     section = config.extraction
+    db: DbStorageSection = config.db_storage
+    files: FileStorageSection = config.file_storage
     get_page: GetPage = make_get_page(
         settings.user_agent, settings.http_timeout, section.min_delay_between_requests
     )
     return section.use_case(
         source=site,
         get_page=get_page,
-        storage=config.storage(is_test=limits.is_test, **config.storage_options),
+        db_storage=db.storage_class(is_test=limits.is_test, **db.options),
+        file_storage=files.storage_class(is_test=limits.is_test, **files.options),
         is_test=limits.is_test,
         max_pages=limits["max_pages"],
         max_jobs=limits["max_jobs"],

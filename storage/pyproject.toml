@@ -1,13 +1,14 @@
 [project]
 name = "jobcompass-storage"
 version = "0.1.0"
-description = "Storage shared by the JobCompass bricks: tables of contracts, raw files"
+description = "Storage shared by the JobCompass bricks: PostgreSQL tables, S3 raw files"
 requires-python = ">=3.12"
 dependencies = [
     "jobcompass-contracts",
-    "jobcompass-interfaces",
-    "pyarrow>=18",
+    "boto3>=1.35",
+    "psycopg[binary]>=3.2",
     "pydantic>=2.10",
+    "pydantic-settings>=2.6",
 ]
 
 [dependency-groups]
@@ -15,7 +16,6 @@ dev = ["pytest>=8"]
 
 [tool.uv.sources]
 jobcompass-contracts = { workspace = true }
-jobcompass-interfaces = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

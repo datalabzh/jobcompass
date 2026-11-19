@@ -7,15 +7,21 @@ Règles      : SiteConfigReader.load_site("jobup") -> SiteConfig ; l'appelant ne
               N'importe que la brique d'extraction : la commande d'extraction
               s'installe sans la normalisation.
               SiteConfig et ExtractionSection : des données, aucune logique.
+              Un site déclare ses deux stockages : [db_storage] et [file_storage].
 """
 
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
-from entrypoints.config.config_reader import FROZEN, ConfigReader, ImportedClass
+from entrypoints.config.config_reader import (
+    FROZEN,
+    ConfigReader,
+    DbStorageSection,
+    FileStorageSection,
+    ImportedClass,
+)
 from extraction.interfaces import ISiteExtractionUseCase
-from interfaces import IStorage
 
 
 class ExtractionSection(BaseModel):
@@ -35,12 +41,12 @@ class ExtractionSection(BaseModel):
 
 
 class SiteConfig(BaseModel):
-    """A site.toml: the storage, then the [extraction] section."""
+    """A site.toml: its two storages, then the [extraction] section."""
 
     model_config = FROZEN
 
-    storage: Annotated[type[IStorage], ImportedClass]
-    storage_options: dict[str, Any] = Field(default_factory=dict)
+    db_storage: DbStorageSection
+    file_storage: FileStorageSection
     extraction: ExtractionSection
 
 
