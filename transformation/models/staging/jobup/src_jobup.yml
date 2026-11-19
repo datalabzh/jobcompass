@@ -18,6 +18,10 @@ sources:
         union_by_name = true, hive_partitioning = false)
     tables:
       - name: raw_job_info
-        description: "One row per job seen on a result page, per run (RawJobInfo)."
+        description: >-
+          One row per job seen on a result page, per run (RawJobInfo).
+
       - name: raw_job_detail
-        description: "One row per detail page downloaded, with its raw block (RawJobDetail)."
+        description: >-
+          One row per detail page downloaded, with its raw block
+          (RawJobDetail).

@@ -2,21 +2,141 @@ version: 2
 
 models:
   - name: stg_jobup__job_infos
-    description: "Jobs seen on jobup result pages, one row per job and per run."
+    description: >-
+      Jobs seen on jobup result pages, one row per job and per run. Every run
+      is kept: the lifetime of a job offer is read from its runs.
     columns:
       - name: job_info_id
-        description: "Surrogate key: run_id and url."
+        data_type: varchar
+        description: "Surrogate key of the sighting: run_id and url."
         data_tests:
           - unique
+          - not_null
+
+      - name: run_id
+        data_type: varchar
+        description: "Id of the extraction run that saw the job."
+        data_tests:
+          - not_null
+
+      - name: job_url
+        data_type: varchar
+        description: "URL of the job detail page on jobup."
+        data_tests:
+          - not_null
+
+      - name: site_name
+        data_type: varchar
+        description: "Site the job comes from: jobup."
+
+      - name: schema_version
+        data_type: varchar
+        description: "Version of the RawJobInfo contract of the raw row."
+
+      - name: job_category
+        data_type: varchar
+        description: "jobup category of the result page (URL slug)."
+
+      - name: listing_card
+        data_type: varchar
+        description: "Raw JSON card of the job on the result page, as text."
+
+      - name: is_test
+        data_type: boolean
+        description: "True if written by a test run (limited)."
+
+      - name: seen_at
+        data_type: timestamp with time zone
+        description: "When the job was seen on the result page, in UTC."
+        data_tests:
           - not_null
 
   - name: stg_jobup__job_details
     description: >-
       jobup job detail pages, one row per page (url, raw_hash), latest
-      extraction only.
+      extraction only. Columns read from the JSON-LD are null for paragraphs
+      pages.
     columns:
       - name: job_detail_id
+        data_type: varchar
         description: "Surrogate key of the page: url and raw_hash."
         data_tests:
           - unique
+          - not_null
+
+      - name: raw_hash
+        data_type: varchar
+        description: "SHA-256 of the raw HTML page, its storage address."
+        data_tests:
+          - not_null
+
+      - name: job_url
+        data_type: varchar
+        description: "URL of the job detail page on jobup."
+        data_tests:
+          - not_null
+
+      - name: site_name
+        data_type: varchar
+        description: "Site the page comes from: jobup."
+
+      - name: scraper_name
+        data_type: varchar
+        description: "Name of the scraper that fetched and extracted the page."
+
+      - name: scraper_version
+        data_type: varchar
+        description: "Version of the scraper; the latest one is kept."
+
+      - name: schema_version
+        data_type: varchar
+        description: "Version of the RawJobDetail contract of the raw row."
+
+      - name: payload_format
+        data_type: varchar
+        description: "Format of the raw block: json_ld or paragraphs."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["json_ld", "paragraphs"]
+
+      - name: payload
+        data_type: varchar
+        description: >-
+          Raw data block of the page, as JSON text: the JSON-LD as is, or the
+          list of the HTML paragraphs.
+        data_tests:
+          - not_null
+
+      - name: job_title
+        data_type: varchar
+        description: "Job title from the JSON-LD; null for paragraphs pages."
+
+      - name: company_name
+        data_type: varchar
+        description: >-
+          Hiring company from the JSON-LD; null for paragraphs pages.
+
+      - name: job_description
+        data_type: varchar
+        description: >-
+          Job description: HTML from the JSON-LD (json_ld), or the paragraphs
+          joined by line breaks (paragraphs).
+        data_tests:
+          - not_null
+
+      - name: is_test
+        data_type: boolean
+        description: "True if written by a test run (limited)."
+
+      - name: posted_date
+        data_type: date
+        description: >-
+          Publication date from the JSON-LD; null for paragraphs pages.
+
+      - name: fetched_at
+        data_type: timestamp with time zone
+        description: "When the page was downloaded, in UTC."
+        data_tests:
           - not_null
