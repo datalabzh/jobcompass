@@ -2,7 +2,10 @@
 #   sources  (bronze) : les Parquet bruts, lus tels quels, jamais modifiés
 #   staging  (silver) : un modèle par table brute et par site, stg_<site>__<table>
 #   marts    (gold)   : plus tard (normalisation, clusters)
-# Lancer depuis ce dossier : uv run dbt build --target test   (ou --target real)
+# Lancer depuis la racine du dépôt (chemins relatifs à la racine) :
+#   uv run --package jobcompass-transformation dbt build \
+#     --project-dir transformation --profiles-dir transformation \
+#     --target test   (ou --target real)
 
 name: jobcompass
 version: "0.1.0"

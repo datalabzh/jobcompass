@@ -502,9 +502,14 @@ depuis la racine (extraction, dbt, normalisation, notebooks). Une vue DuckDB gar
 ses Parquet et le résout au moment où on la lit : lue depuis un autre dossier, elle casse.
 
 ```bash
-uv run dbt deps  --project-dir transformation --profiles-dir transformation
-uv run dbt build --project-dir transformation --profiles-dir transformation --target test
+uv run --package jobcompass-transformation dbt deps \
+    --project-dir transformation --profiles-dir transformation
+uv run --package jobcompass-transformation dbt build \
+    --project-dir transformation --profiles-dir transformation --target test
 ```
+
+- `--package jobcompass-transformation` est obligatoire : depuis la racine, `uv run` seul n'installe que
+  le package racine, sans dbt, et lance un autre `dbt` trouvé dans le `PATH` (dbt Fusion, par exemple).
 
 - `profiles.yml` est versionné dans `transformation/` (rien dans `~/.dbt/`). Deux targets :
   - `test` : base `data/test/jobcompass.duckdb`, lit `data/test/` (zone de test) ;

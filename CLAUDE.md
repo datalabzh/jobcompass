@@ -59,8 +59,8 @@ Monolithe, workspace uv : chaque brique est un package avec ses propres dépenda
 # Vérifier qu'une brique se suffit à elle-même
 uv sync --package jobcompass-extraction
 
-# dbt, toujours depuis la racine
-uv run dbt build --project-dir transformation --profiles-dir transformation --target test
+# dbt, toujours depuis la racine, avec le dbt de la brique (--package)
+uv run --package jobcompass-transformation dbt build --project-dir transformation --profiles-dir transformation --target test
 
 # Documentation
 uv run zensical serve
