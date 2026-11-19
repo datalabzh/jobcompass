@@ -30,6 +30,9 @@ jobcompass-normalization = "entrypoints.normalization_cli:main"
 dev = [
     "pytest>=8",
     "jobcompass-catalog",  # the tests write tables of the catalog
+    "jobcompass-extraction",  # the tests cover both commands
+    "jobcompass-normalization",
+    "jobcompass-storage",
 ]
 
 [tool.uv.sources]

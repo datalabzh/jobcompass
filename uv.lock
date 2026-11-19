@@ -611,6 +611,9 @@ normalization = [
 [package.dev-dependencies]
 dev = [
     { name = "jobcompass-catalog" },
+    { name = "jobcompass-extraction" },
+    { name = "jobcompass-normalization" },
+    { name = "jobcompass-storage" },
     { name = "pytest" },
 ]
 
@@ -630,6 +633,9 @@ provides-extras = ["extraction", "normalization"]
 [package.metadata.requires-dev]
 dev = [
     { name = "jobcompass-catalog", editable = "common/catalog" },
+    { name = "jobcompass-extraction", editable = "extraction" },
+    { name = "jobcompass-normalization", editable = "normalization" },
+    { name = "jobcompass-storage", editable = "storage" },
     { name = "pytest", specifier = ">=8" },
 ]
 
