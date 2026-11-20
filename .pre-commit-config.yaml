@@ -3,6 +3,8 @@
 # Tout le projet : uv run pre-commit run --all-files
 # Correction SQL : uv run pre-commit run sqlfluff-fix --all-files --hook-stage manual
 # pre-commit ne voit que les fichiers suivis par Git : git add les nouveaux avant.
+# Ce fichier et .dbt-checkpoint.yaml restent à la racine (exigé par les outils) ;
+# le reste de l'outillage est dans pre-commit/.
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -14,8 +16,10 @@ repos:
     rev: 4.5.0
     hooks:
       - id: sqlfluff-lint
+        args: ["--config", "pre-commit/.sqlfluff"]
         files: ^dbt/models/
       - id: sqlfluff-fix
+        args: ["--config", "pre-commit/.sqlfluff"]
         files: ^dbt/models/
         stages: [manual]
 

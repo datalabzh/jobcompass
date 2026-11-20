@@ -1,6 +1,9 @@
 # SQLFluff : style SQL de dbt Labs (docs/conventions/dbt.md, parties 3 et 9).
+# Utilisé par les hooks sqlfluff de .pre-commit-config.yaml (--config), pour les
+# modèles de dbt/models/ seulement : rien à exclure, pas de .sqlfluffignore.
 # Templater Jinja : ref, source, config, this... fournis par apply_dbt_builtins ;
-# dbt_utils simulé par sqlfluff_libs/dbt_utils.py. Ni base ni dbt compile.
+# dbt_utils simulé par sqlfluff_libs/dbt_utils.py (chemin relatif à ce fichier).
+# Ni base ni dbt compile.
 
 [sqlfluff]
 dialect = duckdb

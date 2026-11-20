@@ -650,9 +650,8 @@ dépôt** ; ce document dit ce qu'ils vérifient, il ne les recopie pas.
 | Fichier | Rôle |
 |---|---|
 | `.pre-commit-config.yaml` (racine) | lance les contrôles ci-dessous, plus ruff pour le Python ; versions figées (`rev`) |
-| `dbt/.sqlfluff` | style SQL de dbt Labs, dialecte `duckdb`, templater Jinja |
-| `dbt/.sqlfluffignore` | exclut `target/`, `dbt_packages/`, `logs/`, `macros/`, `snapshots/` |
-| `dbt/sqlfluff_libs/dbt_utils.py` | macros `dbt_utils` simulées pour le templater Jinja |
+| `pre-commit/.sqlfluff` | style SQL de dbt Labs, dialecte `duckdb`, templater Jinja ; passé aux hooks par `--config` |
+| `pre-commit/sqlfluff_libs/dbt_utils.py` | macros `dbt_utils` simulées pour le templater Jinja |
 | `.dbt-checkpoint.yaml` (racine) | dossier du projet dbt (`dbt`), suivi d'usage désactivé |
 
 Ce qui est vérifié :
