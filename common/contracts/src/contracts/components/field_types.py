@@ -4,10 +4,10 @@ field_types.py
 Description : les composants dont sont faits les contrats : listes fermées de
               valeurs (RunStatus, SkillOrigin, PayloadFormat), types de champs nommés et
               fonction raw_hash.
-Règles      : les énumérations sont des StrEnum, pour que les fichiers Parquet
-              contiennent des valeurs lisibles.
+Règles      : les énumérations sont des StrEnum, pour que les tables contiennent
+              des valeurs lisibles.
               Les types de champs portent leur motif de validation et leur
-              description, tous deux exportés dans le JSON Schema :
+              description :
                 SourceSlug = minuscules, chiffres et underscores, ex. 'jobup'.
                 JobUrl     = URL http(s) sans espace.
                 Sha256Hash = 64 caractères hexadécimaux minuscules.
