@@ -32,7 +32,10 @@ from entrypoints.config.normalization_config import (
     NormalizerConfig,
 )
 from entrypoints.run_limits import RunLimits, add_limit_options, resolve_limits
-from normalization.interfaces import INormalizationUseCase, NormalizationReport
+from normalization.interfaces.i_normalization_uc import (
+    INormalizationUseCase,
+    NormalizationReport,
+)
 
 LIMITS: list[str] = ["max_jobs"]
 

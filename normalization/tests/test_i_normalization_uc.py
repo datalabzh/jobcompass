@@ -11,7 +11,10 @@ from abc import abstractmethod
 
 import pytest
 
-from normalization.interfaces import INormalizationUseCase, NormalizationReport
+from normalization.interfaces.i_normalization_uc import (
+    INormalizationUseCase,
+    NormalizationReport,
+)
 
 
 def test_normalization_without_description_refused() -> None:

@@ -9,7 +9,7 @@ Règles      : un parseur concret sans signature complète est refusé dès sa
 
 import pytest
 
-from extraction.interfaces import IParser
+from extraction.interfaces.i_parser import IParser
 
 
 def test_parser_without_version_refused() -> None:

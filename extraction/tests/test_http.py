@@ -13,7 +13,7 @@ import httpx
 import pytest
 
 from extraction.http import make_get_page
-from extraction.interfaces import GetPage, Page, PageFetchError
+from extraction.interfaces.i_get_page import GetPage, Page, PageFetchError
 
 URL: str = "https://www.example.ch/page"
 

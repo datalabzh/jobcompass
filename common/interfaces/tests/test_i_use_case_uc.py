@@ -13,7 +13,7 @@ from abc import abstractmethod
 
 import pytest
 
-from interfaces import IUseCase
+from interfaces.i_use_case import IUseCase
 
 
 def test_execute_is_required() -> None:

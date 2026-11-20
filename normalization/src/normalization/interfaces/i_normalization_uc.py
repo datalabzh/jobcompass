@@ -25,7 +25,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-from interfaces import IUseCase
+from interfaces.i_use_case import IUseCase
 from storage.interfaces.i_db_storage import IDbStorage
 
 SIGNATURE: tuple[str, ...] = (

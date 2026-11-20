@@ -33,7 +33,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from contracts import ContractModel
+from contracts.components.contract_model import ContractModel
 from storage.infra_env import INFRA_ENV_FILE
 from storage.interfaces.i_db_storage import IDbStorage
 

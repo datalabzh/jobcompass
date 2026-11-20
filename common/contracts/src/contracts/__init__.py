@@ -1,38 +1,10 @@
 """
 __init__.py
 
-Description : API publique des contrats de données JobCompass.
-Règles      : les briques importent uniquement d'ici (from contracts import ...),
-              jamais depuis les sous-packages : l'organisation interne peut changer
-              librement.
+Description : contrats de données JobCompass.
+Règles      : volontairement vide : on importe chaque classe par son chemin
+              (from contracts.jobs.raw_job_info import RawJobInfo).
               jobs/            = les contrats échangés entre briques.
               components/      = ce dont les contrats sont faits (contract_model,
                                  field_types).
 """
-
-from contracts.components.contract_model import ContractModel
-from contracts.components.field_types import (
-    PayloadFormat,
-    RunStatus,
-    SkillOrigin,
-    compute_raw_hash,
-)
-from contracts.jobs.log_raw_job_detail import LogRawJobDetail
-from contracts.jobs.log_raw_job_info import LogRawJobInfo
-from contracts.jobs.normalized_job import NormalizedJob, NormalizedSkill
-from contracts.jobs.raw_job_detail import RawJobDetail
-from contracts.jobs.raw_job_info import RawJobInfo
-
-__all__ = [
-    "ContractModel",
-    "RawJobDetail",
-    "RawJobInfo",
-    "LogRawJobInfo",
-    "LogRawJobDetail",
-    "NormalizedJob",
-    "NormalizedSkill",
-    "PayloadFormat",
-    "RunStatus",
-    "SkillOrigin",
-    "compute_raw_hash",
-]

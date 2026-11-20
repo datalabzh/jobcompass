@@ -8,7 +8,8 @@ Règles      : le hash est stable, ne dépend que du contenu, et est accepté pa
 
 from datetime import UTC, datetime
 
-from contracts import PayloadFormat, RawJobDetail, compute_raw_hash
+from contracts.components.field_types import PayloadFormat, compute_raw_hash
+from contracts.jobs.raw_job_detail import RawJobDetail
 
 
 def test_known_value() -> None:

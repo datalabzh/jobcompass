@@ -19,14 +19,11 @@ from typing import Any
 
 import pytest
 
-from contracts import (
-    LogRawJobDetail,
-    LogRawJobInfo,
-    PayloadFormat,
-    RawJobDetail,
-    RawJobInfo,
-    RunStatus,
-)
+from contracts.components.field_types import PayloadFormat, RunStatus
+from contracts.jobs.log_raw_job_detail import LogRawJobDetail
+from contracts.jobs.log_raw_job_info import LogRawJobInfo
+from contracts.jobs.raw_job_detail import RawJobDetail
+from contracts.jobs.raw_job_info import RawJobInfo
 from storage.postgres_db_storage import PostgresDbStorage
 
 NOW: datetime = datetime(2026, 11, 16, 6, 0, tzinfo=UTC)

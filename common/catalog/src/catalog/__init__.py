@@ -1,10 +1,7 @@
 """
 __init__.py
 
-Description : API publique du catalogue des tables de JobCompass.
-Règles      : on importe uniquement d'ici (from catalog import Table).
+Description : catalogue des tables de JobCompass.
+Règles      : volontairement vide : on importe chaque classe par son chemin
+              (from catalog.tables import Table).
 """
-
-from catalog.tables import Table
-
-__all__ = ["Table"]

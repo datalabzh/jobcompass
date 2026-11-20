@@ -29,8 +29,8 @@ from typing import Any
 
 from selectolax.lexbor import LexborHTMLParser
 
-from contracts import PayloadFormat
-from extraction.interfaces import IParser, ParsingError
+from contracts.components.field_types import PayloadFormat
+from extraction.interfaces.i_parser import IParser, ParsingError
 
 JOB_INFO: str = "job_info"  # a result page
 JOB_DETAIL: str = "job_detail"  # the detail page of a job

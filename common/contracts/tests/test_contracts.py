@@ -14,17 +14,12 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from contracts import (
-    LogRawJobDetail,
-    LogRawJobInfo,
-    NormalizedJob,
-    NormalizedSkill,
-    PayloadFormat,
-    RawJobDetail,
-    RawJobInfo,
-    RunStatus,
-    SkillOrigin,
-)
+from contracts.components.field_types import PayloadFormat, RunStatus, SkillOrigin
+from contracts.jobs.log_raw_job_detail import LogRawJobDetail
+from contracts.jobs.log_raw_job_info import LogRawJobInfo
+from contracts.jobs.normalized_job import NormalizedJob, NormalizedSkill
+from contracts.jobs.raw_job_detail import RawJobDetail
+from contracts.jobs.raw_job_info import RawJobInfo
 
 NOW: datetime = datetime(2026, 11, 13, 12, 0, tzinfo=UTC)
 URL: str = (

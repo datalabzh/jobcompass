@@ -23,7 +23,7 @@ from entrypoints.config.config_reader import (
     DbStorageSection,
     ImportedClass,
 )
-from normalization.interfaces import INormalizationUseCase
+from normalization.interfaces.i_normalization_uc import INormalizationUseCase
 
 
 class NormalizationConfig(BaseModel):

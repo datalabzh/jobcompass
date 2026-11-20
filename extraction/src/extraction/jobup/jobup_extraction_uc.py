@@ -38,22 +38,17 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from catalog import Table
-from contracts import (
-    LogRawJobDetail,
-    LogRawJobInfo,
-    RawJobDetail,
-    RawJobInfo,
-    RunStatus,
-    compute_raw_hash,
-)
-from extraction.interfaces import (
+from catalog.tables import Table
+from contracts.components.field_types import RunStatus, compute_raw_hash
+from contracts.jobs.log_raw_job_detail import LogRawJobDetail
+from contracts.jobs.log_raw_job_info import LogRawJobInfo
+from contracts.jobs.raw_job_detail import RawJobDetail
+from contracts.jobs.raw_job_info import RawJobInfo
+from extraction.interfaces.i_get_page import GetPage, Page, PageFetchError
+from extraction.interfaces.i_site_extraction_uc import (
     DetailsSummary,
     ExtractionReport,
-    GetPage,
     ISiteExtractionUseCase,
-    Page,
-    PageFetchError,
 )
 from extraction.jobup.jobup_parser import (
     JOB_DETAIL,
@@ -62,7 +57,7 @@ from extraction.jobup.jobup_parser import (
     JobupListing,
     JobupParser,
 )
-from interfaces import IUseCase
+from interfaces.i_use_case import IUseCase
 from storage.interfaces.i_db_storage import IDbStorage
 from storage.interfaces.i_file_storage import IFileStorage
 

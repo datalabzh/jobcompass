@@ -8,7 +8,7 @@ Règles      : chaque nom de table est unique et en snake_case (c'est aussi le n
 
 import re
 
-from catalog import Table
+from catalog.tables import Table
 
 
 def test_table_names_are_unique_snake_case() -> None:

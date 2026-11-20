@@ -16,7 +16,7 @@ import time
 
 import httpx
 
-from extraction.interfaces import GetPage, Page, PageFetchError
+from extraction.interfaces.i_get_page import GetPage, Page, PageFetchError
 
 
 def make_get_page(

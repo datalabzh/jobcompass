@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from extraction.interfaces import Page, PageFetchError
+from extraction.interfaces.i_get_page import Page, PageFetchError
 from storage.postgres_db_storage import PostgresDbStorage
 from storage.s3_file_storage import S3FileStorage
 

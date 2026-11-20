@@ -20,7 +20,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import Any
 
-from contracts import ContractModel
+from contracts.components.contract_model import ContractModel
 
 
 class IDbStorage(ABC):

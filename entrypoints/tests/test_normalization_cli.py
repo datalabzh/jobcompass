@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from catalog import Table
+from catalog.tables import Table
 from contracts import ExtractedJob
 from entrypoints.config.config_reader import DbStorageSection
 from entrypoints.config.normalization_config import (
@@ -23,7 +23,7 @@ from entrypoints.config.normalization_config import (
 )
 from entrypoints.normalization_cli import build_normalization, main, parse_args
 from entrypoints.run_limits import RunLimits, resolve_limits
-from normalization.interfaces import NormalizationReport
+from normalization.interfaces.i_normalization_uc import NormalizationReport
 from storage.postgres_db_storage import PostgresDbStorage
 
 

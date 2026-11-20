@@ -20,9 +20,13 @@ Règles      : compétences déclarées par la source (declared_skills) : gardé
 import re
 from typing import Any
 
-from catalog import Table
-from contracts import NormalizedJob, NormalizedSkill, SkillOrigin
-from normalization.interfaces import INormalizationUseCase, NormalizationReport
+from catalog.tables import Table
+from contracts.components.field_types import SkillOrigin
+from contracts.jobs.normalized_job import NormalizedJob, NormalizedSkill
+from normalization.interfaces.i_normalization_uc import (
+    INormalizationUseCase,
+    NormalizationReport,
+)
 
 # canonical form -> what it looks like in a text (regular expression)
 KEYWORDS: dict[str, str] = {

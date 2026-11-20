@@ -16,10 +16,10 @@ from typing import Any
 
 import pytest
 
-from catalog import Table
+from catalog.tables import Table
 from contracts import ExtractedJob
 from normalization.fake.fake_normalization_uc import FakeNormalizationUseCase
-from normalization.interfaces import NormalizationReport
+from normalization.interfaces.i_normalization_uc import NormalizationReport
 from storage.postgres_db_storage import PostgresDbStorage
 
 NOW: datetime = datetime(2026, 11, 17, 15, 0, tzinfo=UTC)

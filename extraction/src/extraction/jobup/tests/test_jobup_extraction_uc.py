@@ -21,9 +21,10 @@ import pytest
 from conftest import FakeGetPage, Storages, fixed_now, page
 from pydantic import ValidationError
 
-from catalog import Table
-from contracts import PayloadFormat, RunStatus
-from extraction.interfaces import ExtractionReport, Page
+from catalog.tables import Table
+from contracts.components.field_types import PayloadFormat, RunStatus
+from extraction.interfaces.i_get_page import Page
+from extraction.interfaces.i_site_extraction_uc import ExtractionReport
 from extraction.jobup.jobup_extraction_uc import JobupExtractionUseCase
 from storage.postgres_db_storage import PostgresDbStorage
 from storage.s3_file_storage import S3FileStorage

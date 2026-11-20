@@ -30,9 +30,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from contracts import LogRawJobInfo, RunStatus
+from contracts.components.field_types import RunStatus
+from contracts.jobs.log_raw_job_info import LogRawJobInfo
 from extraction.interfaces.i_get_page import GetPage
-from interfaces import IUseCase
+from interfaces.i_use_case import IUseCase
 from storage.interfaces.i_db_storage import IDbStorage
 from storage.interfaces.i_file_storage import IFileStorage
 

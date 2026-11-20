@@ -21,7 +21,7 @@ from entrypoints.config.config_reader import (
     FileStorageSection,
     ImportedClass,
 )
-from extraction.interfaces import ISiteExtractionUseCase
+from extraction.interfaces.i_site_extraction_uc import ISiteExtractionUseCase
 
 
 class ExtractionSection(BaseModel):

@@ -29,7 +29,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from contracts import RunStatus
+from contracts.components.field_types import RunStatus
 from entrypoints.config.config_reader import (
     ConfigError,
     DbStorageSection,
@@ -38,7 +38,11 @@ from entrypoints.config.config_reader import (
 from entrypoints.config.extraction_config import SiteConfig, SiteConfigReader
 from entrypoints.run_limits import RunLimits, add_limit_options, resolve_limits
 from extraction.http import make_get_page
-from extraction.interfaces import ExtractionReport, GetPage, ISiteExtractionUseCase
+from extraction.interfaces.i_get_page import GetPage
+from extraction.interfaces.i_site_extraction_uc import (
+    ExtractionReport,
+    ISiteExtractionUseCase,
+)
 
 LIMITS: list[str] = ["max_pages", "max_jobs"]
 

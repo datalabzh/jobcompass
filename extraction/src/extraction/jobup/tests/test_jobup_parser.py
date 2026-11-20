@@ -19,8 +19,8 @@ from typing import Any
 
 import pytest
 
-from contracts import PayloadFormat
-from extraction.interfaces import ParsingError
+from contracts.components.field_types import PayloadFormat
+from extraction.interfaces.i_parser import ParsingError
 from extraction.jobup.jobup_parser import (
     JOB_DETAIL,
     JOB_INFO,
