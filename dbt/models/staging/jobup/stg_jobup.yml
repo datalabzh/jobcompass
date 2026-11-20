@@ -3,47 +3,78 @@ version: 2
 models:
   - name: stg_jobup__job_infos
     description: >-
-      Jobs seen on jobup result pages, one row per job and per run. Every run
-      is kept: the lifetime of a job offer is read from its runs.
+      Jobs seen on jobup result pages, one row per job and per run,
+      listing card read into columns. Every run is kept: the lifetime of a
+      job offer is read from its runs.
     columns:
-      - name: job_info_id
-        data_type: varchar
-        description: "Surrogate key of the sighting: run_id and url."
+      - name: hash_job_info_id
+        data_type: text
+        description: "Key of the sighting: hash of run_id, source and url."
         data_tests:
           - unique
           - not_null
 
+      - name: hash_job_id
+        data_type: text
+        description: "Key of the job offer: hash of source and url."
+        data_tests:
+          - not_null
+
       - name: run_id
-        data_type: varchar
+        data_type: text
         description: "Id of the extraction run that saw the job."
         data_tests:
           - not_null
 
       - name: job_url
-        data_type: varchar
+        data_type: text
         description: "URL of the job detail page on jobup."
         data_tests:
           - not_null
 
       - name: site_name
-        data_type: varchar
+        data_type: text
         description: "Site the job comes from: jobup."
 
       - name: schema_version
-        data_type: varchar
+        data_type: text
         description: "Version of the RawJobInfo contract of the raw row."
 
       - name: job_category
-        data_type: varchar
+        data_type: text
         description: "jobup category of the result page (URL slug)."
 
+      - name: job_title
+        data_type: text
+        description: "Job title from the listing card (key title)."
+
+      - name: company_name
+        data_type: text
+        description: "Hiring company from the listing card (key company.name)."
+
+      - name: job_place
+        data_type: text
+        description: "Place of the job from the listing card (key place)."
+
       - name: listing_card
-        data_type: varchar
-        description: "Raw JSON card of the job on the result page, as text."
+        data_type: jsonb
+        description: "Raw JSON card of the job on the result page."
 
       - name: is_test
         data_type: boolean
         description: "True if written by a test run (limited)."
+
+      - name: initial_published_at
+        data_type: timestamp with time zone
+        description: >-
+          First publication of the offer, from the listing card; null
+          if unreadable.
+
+      - name: published_at
+        data_type: timestamp with time zone
+        description: >-
+          Latest publication of the offer, from the listing card; null
+          if unreadable.
 
       - name: seen_at
         data_type: timestamp with time zone
@@ -51,49 +82,131 @@ models:
         data_tests:
           - not_null
 
-  - name: stg_jobup__job_details
+  - name: stg_jobup__job_info_runs
     description: >-
-      jobup job detail pages, one row per page (url, raw_hash), latest
-      extraction only. Columns read from the JSON-LD are null for paragraphs
-      pages.
+      Extraction runs of the jobup result pages, one row per run of a
+      category. Failed runs are kept: downstream models choose the
+      completed ones.
     columns:
-      - name: job_detail_id
-        data_type: varchar
-        description: "Surrogate key of the page: url and raw_hash."
+      - name: run_id
+        data_type: text
+        description: "Id of the extraction run of a category."
         data_tests:
           - unique
           - not_null
 
-      - name: raw_hash
-        data_type: varchar
-        description: "SHA-256 of the raw HTML page, its storage address."
+      - name: site_name
+        data_type: text
+        description: "Site of the run: jobup."
+
+      - name: schema_version
+        data_type: text
+        description: "Version of the LogRawJobInfo contract of the raw row."
+
+      - name: job_category
+        data_type: text
+        description: "jobup category read by the run (URL slug)."
+
+      - name: run_status
+        data_type: text
+        description: "Outcome of the run: completed or failed."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["completed", "failed"]
+
+      - name: run_error
+        data_type: text
+        description: "Error that stopped the run; null when completed."
+
+      - name: announced_total
+        data_type: integer
+        description: "Number of jobs announced by the site for the category."
+
+      - name: pages_read
+        data_type: integer
+        description: "Number of result pages read."
+
+      - name: jobs_seen
+        data_type: integer
+        description: "Number of jobs recorded, duplicates included."
+
+      - name: distinct_urls
+        data_type: integer
+        description: "Number of distinct job URLs recorded."
+
+      - name: is_test
+        data_type: boolean
+        description: "True if written by a test run (limited)."
+
+      - name: started_at
+        data_type: timestamp with time zone
+        description: "When the run started, in UTC."
+        data_tests:
+          - not_null
+
+      - name: finished_at
+        data_type: timestamp with time zone
+        description: "When the run finished, in UTC."
+
+  - name: stg_jobup__job_details
+    description: >-
+      jobup job detail pages, one row per page (job_url), latest
+      extraction only: highest scraper_version compared number by number,
+      then latest fetched_at. Columns read from the JSON-LD are null for
+      paragraphs pages.
+    columns:
+      - name: hash_job_detail_id
+        data_type: text
+        description: >-
+          Key of the page extraction: hash of hash_html_id, scraper
+          and scraper_version.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: hash_job_id
+        data_type: text
+        description: "Key of the job offer: hash of source and url."
+        data_tests:
+          - unique
+          - not_null
+
+      - name: hash_html_id
+        data_type: text
+        description: >-
+          SHA-256 of the raw HTML page, its address in the object
+          storage.
         data_tests:
           - not_null
 
       - name: job_url
-        data_type: varchar
+        data_type: text
         description: "URL of the job detail page on jobup."
         data_tests:
           - not_null
 
       - name: site_name
-        data_type: varchar
+        data_type: text
         description: "Site the page comes from: jobup."
 
       - name: scraper_name
-        data_type: varchar
+        data_type: text
         description: "Name of the scraper that fetched and extracted the page."
 
       - name: scraper_version
-        data_type: varchar
+        data_type: text
         description: "Version of the scraper; the latest one is kept."
+        data_tests:
+          - not_null
 
       - name: schema_version
-        data_type: varchar
+        data_type: text
         description: "Version of the RawJobDetail contract of the raw row."
 
       - name: payload_format
-        data_type: varchar
+        data_type: text
         description: "Format of the raw block: json_ld or paragraphs."
         data_tests:
           - not_null
@@ -101,28 +214,31 @@ models:
               arguments:
                 values: ["json_ld", "paragraphs"]
 
-      - name: payload
-        data_type: varchar
+      - name: job_title
+        data_type: text
         description: >-
-          Raw data block of the page, as JSON text: the JSON-LD as is, or the
-          list of the HTML paragraphs.
+          Job title from the JSON-LD (key title); null for paragraphs
+          pages.
+
+      - name: company_name
+        data_type: text
+        description: >-
+          Hiring company from the JSON-LD (key
+          hiringOrganization.name); null for paragraphs pages.
+
+      - name: job_description
+        data_type: text
+        description: >-
+          Job description: HTML from the JSON-LD (json_ld), or the
+          paragraphs joined by line breaks (paragraphs).
         data_tests:
           - not_null
 
-      - name: job_title
-        data_type: varchar
-        description: "Job title from the JSON-LD; null for paragraphs pages."
-
-      - name: company_name
-        data_type: varchar
+      - name: payload
+        data_type: jsonb
         description: >-
-          Hiring company from the JSON-LD; null for paragraphs pages.
-
-      - name: job_description
-        data_type: varchar
-        description: >-
-          Job description: HTML from the JSON-LD (json_ld), or the paragraphs
-          joined by line breaks (paragraphs).
+          Raw data block of the page: the JSON-LD, or the list of the
+          HTML paragraphs.
         data_tests:
           - not_null
 
@@ -133,7 +249,8 @@ models:
       - name: posted_date
         data_type: date
         description: >-
-          Publication date from the JSON-LD; null for paragraphs pages.
+          Publication date from the JSON-LD (key datePosted); null for
+          paragraphs pages or if unreadable.
 
       - name: fetched_at
         data_type: timestamp with time zone

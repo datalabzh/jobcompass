@@ -14,8 +14,10 @@ dans ce projet.
 Dans ce document, `<source>` désigne une source de données (un site : `jobup`…), `<domaine>` un domaine
 métier (`jobs`, `skills`…), `<entite>` l'objet décrit par un modèle (`job_details`, `clusters`…).
 
-Le projet dbt est dans `dbt/` ; la base est **DuckDB** ; les sources sont les fichiers
-Parquet bruts déposés par l'extraction Python (ADR-0002).
+Le projet dbt est dans `dbt/` ; la base est **PostgreSQL** ; les sources sont les tables brutes
+déposées par l'extraction et la normalisation Python (schéma `raw`, ou `raw_test` pour les tests), plus
+la table de configuration `config.normalizer` (ADR-0002). Les règles métier des modèles existants sont
+en partie 11.
 
 ---
 
@@ -29,7 +31,8 @@ Parquet bruts déposés par l'extraction Python (ADR-0002).
 | `intermediate` | jointures, calculs, étapes de préparation | `int_` | vue |
 | `marts` | produits finaux lus par l'analyse ou les applications | aucun | table |
 
-Bronze = les Parquet bruts (sources) ; silver = staging et intermédiaires ; gold = marts.
+Bronze = les tables brutes de Postgres (sources) ; silver = staging et intermédiaires ; gold = marts.
+Schémas écrits : `analytics_<couche>` (target `real`) ou `analytics_test_<couche>` (target `test`).
 
 ### Le double underscore
 
@@ -52,25 +55,36 @@ dbt/
   packages.yml
   models/
     staging/
-      jobup/
+      jobup/                        # une source = un site...
         src_jobup.yml
         stg_jobup.yml
-        stg_jobup__job_details.sql
         stg_jobup__job_infos.sql
+        stg_jobup__job_info_runs.sql
+        stg_jobup__job_details.sql
+      normalization/                # ... ou une brique commune à tous les sites
+        src_normalization.yml
+        stg_normalization.yml
+        stg_normalization__normalized_jobs.sql
+      config/                       # ... ou les tables de configuration
+        src_config.yml
+        stg_config.yml
+        stg_config__normalizers.sql
     intermediate/
       jobs/
-        int_jobs__job_details_unioned.sql
-        int_jobs__job_details_unioned.yml
+        int_jobs__job_infos_aggregated.sql
+        int_jobs__job_infos_aggregated.yml
+      skills/
+        int_skills__normalized_skills_unnested.sql
+        int_skills__normalized_skills_unnested.yml
     marts/
       jobs/
         jobs__job_offers.sql
         jobs__job_offers.yml
+      skills/
+        skills__job_skills.sql
+        skills__job_skills.yml
   snapshots/
-    jobs__snap_job_offers.sql
-    jobs__snap_job_offers.yml
   macros/
-    my_macro.sql
-    my_macro.yml
 ```
 
 - Tout en minuscules, en `snake_case`. Des underscores dans les noms de modèles, jamais de points.
@@ -97,12 +111,25 @@ dbt/
 ## 2. Nommage des modèles et des colonnes
 
 - Modèles au **pluriel** quand c'est possible (`job_details`, `clusters`).
-- **Une clé primaire par modèle**, nommée `<objet>_id`, de type texte, testée `unique` et `not_null`.
-  - Si une colonne existante est déjà unique à la granularité du modèle, c'est elle la clé : **pas de
-    clé de synthèse en plus**.
-  - Si l'unicité porte sur plusieurs colonnes, créer une clé de synthèse avec
-    `dbt_utils.generate_surrogate_key`.
-- Même nom de clé dans tous les modèles (`job_detail_id` partout, jamais `id`).
+- **Une clé primaire par modèle**, de type texte, testée `unique` et `not_null`.
+- **Nommage des clés** : `hash_<objet>_id` quand la clé est un hash, `<objet>_id` sinon (ex. `run_id`).
+  Le même nom partout pour le même objet (`hash_job_id` dans tous les modèles, jamais `id`).
+- **Un seul hash est calculé en Python** : `hash_html_id`, l'empreinte SHA-256 du HTML d'une page (le
+  nom de son fichier dans RustFS). **Tous les autres** `hash_<objet>_id` sont calculés **dans dbt**, avec
+  `dbt_utils.generate_surrogate_key` (MD5 de colonnes concaténées) ; jamais de hash calculé à la main ni
+  en Python. Les tables brutes n'ont pas de hash : leur unicité porte sur des colonnes.
+
+| Clé | Colonnes hachées | Ce qu'elle identifie |
+|---|---|---|
+| `hash_html_id` (Python) | contenu HTML (SHA-256) | le HTML d'une page |
+| `hash_job_id` | `source`, `url` | une offre |
+| `hash_job_info_id` | `run_id`, `source`, `url` | une offre vue lors d'un passage |
+| `hash_job_detail_id` | `hash_html_id`, `scraper`, `scraper_version` | une extraction d'une page |
+| `hash_normalized_job_id` | les trois précédentes + `normalizer`, `normalizer_version`, `model`, `model_version` | une normalisation d'une extraction |
+| `hash_normalizer_id` | `normalizer`, `normalizer_version` | un normaliseur |
+| `hash_normalized_skill_id` | `hash_normalized_job_id`, `canonical_skill` | une compétence d'une normalisation |
+| `hash_job_skill_id` | `hash_job_id`, `canonical_skill` | une compétence d'une offre |
+
 - Noms **métier** plutôt que noms de la source (`company_name`, même si le JSON-LD dit
   `hiringOrganization.name`).
 - Ni abréviation ni alias court (`company`, pas `comp` ; `job_details`, pas `jd`).
@@ -128,7 +155,7 @@ Dans le `select` final, les colonnes sont groupées et précédées d'un comment
 6. `dates`
 7. `timestamps`
 
-Les hash et le JSON brut (texte) sont rangés en `strings`. Pas de groupe qui mélange les types (pas de
+Les hash et le JSON brut (`jsonb`) sont rangés en `strings`. Pas de groupe qui mélange les types (pas de
 groupe `technical`, `hashes` ou `load`).
 
 ---
@@ -181,20 +208,32 @@ en clair) :
   - pas de colonne à exclure : `select * from {{ source(...) }}` ;
   - des colonnes à exclure : `dbt_utils.star(..., except=[...])` (partie 4).
 
+- Une ligne par objet : quand la source en a plusieurs versions, garder la bonne dès la CTE `source`
+  (`distinct on` en Postgres, voir partie 11).
+
 ```sql
 -- ---------------------------------------------------------------------------
 -- Model Name: stg_jobup__job_details.sql
--- Description: jobup job detail pages, one row per page (url, raw_hash),
---              JSON-LD read into columns.
--- Rules: no join. Latest extraction of a page only (scraper_version).
---        Columns read from the JSON-LD are null for paragraphs pages.
+-- Description: jobup job detail pages, one row per page (job_url), latest
+--              extraction only, JSON-LD keys read into columns.
+-- Rules: no join. Latest extraction of a page: highest scraper_version,
+--        compared number by number (0.10.0 after 0.9.0), then latest
+--        fetched_at. Columns read from the JSON-LD are null for paragraphs
+--        pages (the listing card is used downstream).
 -- ---------------------------------------------------------------------------
 
 with
 
 source as (
 
-    select * from {{ source('jobup', 'raw_job_detail') }}
+    select distinct on (url) *
+    from {{ source('jobup', 'raw_job_detail') }}
+    where source = 'jobup'
+    {# The latest extraction of each page: distinct on needs named columns #}
+    order by  -- noqa: AM06
+        url asc,
+        string_to_array(scraper_version, '.')::int[] desc,
+        fetched_at desc
 
 ),
 
@@ -203,33 +242,38 @@ renamed as (
     select
 
         ---------- ids
-        {{ dbt_utils.generate_surrogate_key(['url', 'raw_hash']) }}
-            as job_detail_id,
+        {{ dbt_utils.generate_surrogate_key(
+            ['hash_html_id', 'scraper', 'scraper_version']
+        ) }} as hash_job_detail_id,
+        {{ dbt_utils.generate_surrogate_key(['source', 'url']) }}
+            as hash_job_id,
+        hash_html_id,
 
         ---------- strings
-        raw_hash,
         url as job_url,
         payload_format,
-        payload ->> '$.title' as job_title,
-        payload ->> '$.hiringOrganization.name' as company_name,
+        payload ->> 'title' as job_title,
+        payload -> 'hiringOrganization' ->> 'name' as company_name,
 
         ---------- dates
-        try_cast(left(payload ->> '$.datePosted', 10) as date) as posted_date,
+        case
+            when pg_input_is_valid(left(payload ->> 'datePosted', 10), 'date')
+                then left(payload ->> 'datePosted', 10)::date
+        end as posted_date,
 
         ---------- timestamps
         fetched_at
 
     from source
-    {# A page re-extracted later: the latest extraction only #}
-    qualify row_number() over (
-        partition by url, raw_hash
-        order by fetched_at desc, scraper_version desc
-    ) = 1
 
 )
 
 select * from renamed
 ```
+
+- Lecture du JSON en Postgres : `->` (objet), `->>` (texte). Conversion d'un texte qui peut être
+  illisible : `case when pg_input_is_valid(<texte>, '<type>') then <texte>::<type> end` (Postgres n'a
+  pas de `try_cast`).
 
 ### Intermédiaires et marts
 
@@ -296,9 +340,10 @@ final as (
     select
 
         ---------- ids
-        job_url as job_offer_id,
+        {{ dbt_utils.generate_surrogate_key(['job_url']) }} as hash_job_id,
 
         ---------- strings
+        job_url,
         job_title,
 
         ---------- booleans
@@ -349,11 +394,12 @@ from {{ source('jobup', 'raw_job_detail') }}
 
 ```sql
 ---------- ids
-{{ dbt_utils.generate_surrogate_key(['url', 'raw_hash']) }}
-    as job_detail_id,
+{{ dbt_utils.generate_surrogate_key(['source', 'url']) }}
+    as hash_job_id,
 ```
 
-À n'utiliser que si aucune colonne existante n'est unique à la granularité du modèle.
+Toutes les clés `hash_<objet>_id` se calculent ainsi (partie 2), y compris dans les intermédiaires et
+les marts.
 
 ---
 
@@ -369,7 +415,7 @@ from {{ source('jobup', 'raw_job_detail') }}
 ```yaml
 columns:
   - name: payload_format
-    data_type: varchar
+    data_type: text
     description: "Format of the raw block: json_ld or paragraphs."
     data_tests:
       - not_null
@@ -435,8 +481,9 @@ par exemple) dépasse un seuil.
 
 ## 6. Documentation (`.yml`)
 
-- **Chaque modèle et chaque colonne** a une `description` non vide et un `data_type` (types DuckDB :
-  `varchar`, `bigint`, `double`, `boolean`, `date`, `timestamp with time zone`, `varchar[]`…).
+- **Chaque modèle et chaque colonne** a une `description` non vide et un `data_type` (types Postgres :
+  `text`, `integer`, `bigint`, `boolean`, `date`, `timestamp with time zone`, `jsonb`…), lu dans
+  `information_schema.columns` sur les vues construites.
 - Une colonne n'est déclarée qu'une fois par modèle (sans tenir compte de la casse) : sinon dbt garde
   silencieusement la dernière.
 - Les colonnes du `.yml` correspondent exactement au `.sql` ; chaque `.sql` a son entrée dans un `.yml`,
@@ -448,12 +495,14 @@ par exemple) dépasse un seuil.
 models:
   - name: stg_jobup__job_details
     description: >-
-      jobup job detail pages, one row per page (url, raw_hash), latest
+      jobup job detail pages, one row per page (job_url), latest
       extraction only.
     columns:
-      - name: job_detail_id
-        data_type: varchar
-        description: "Surrogate key of the page: url and raw_hash."
+      - name: hash_job_detail_id
+        data_type: text
+        description: >-
+          Key of the page extraction: hash of hash_html_id, scraper and
+          scraper_version.
         data_tests:
           - unique
           - not_null
@@ -464,29 +513,31 @@ models:
 
 ### Sources (`src_<source>.yml`)
 
-Les tables sources sont les Parquet bruts, lus par DuckDB. Le chemin est **relatif à la racine du
-dépôt** (partie 7) : `data/test/…` pour le target `test`, `data/…` pour le target `real`.
+Les tables sources sont les tables brutes de Postgres. Le schéma dépend du target : `raw_test` (zone de
+test) pour `test`, `raw` pour `real`. Les tables brutes contiennent tous les sites : un staging de site
+garde `source = '<site>'` dès sa CTE `source`. Un test qui porte sur la donnée brute elle-même (format
+d'une colonne) se pose sur la source.
 
 ```yaml
 version: 2
 
 sources:
   - name: jobup
-    description: "Raw tables of jobup.ch, as written by the extraction."
-    meta:
-      external_location: >-
-        read_parquet(
-        '{{ "data/test" if target.name == "test" else "data" }}/{name}/source=jobup/*/*.parquet',
-        union_by_name = true, hive_partitioning = false)
+    description: "Raw tables of the extraction, read for jobup.ch."
+    schema: "{{ 'raw_test' if target.name == 'test' else 'raw' }}"
     tables:
-      - name: raw_job_info
-        description: "One row per job seen on a result page, per run."
       - name: raw_job_detail
-        description: "One row per detail page downloaded, with its raw block."
+        description: >-
+          One row per extraction of a detail page by a version of the scraper,
+          with its raw block (RawJobDetail).
+        columns:
+          - name: scraper_version
+            data_tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: "~ '^[0-9]+\\.[0-9]+\\.[0-9]+$'"
 ```
-
-`union_by_name` lit ensemble des fichiers de versions de contrat différentes ; le partitionnement hive
-est désactivé (la colonne `source` existe déjà, le jour d'écriture n'est pas utile).
 
 ### Ordre de travail pour un nouveau staging
 
@@ -499,24 +550,23 @@ Dossier, puis `src_<source>.yml`, puis les `.sql`, puis build, puis `stg_<source
 
 ### Lancer dbt : toujours depuis la racine du dépôt
 
-Le projet est un monolithe : **tous les chemins sont relatifs à la racine du dépôt**, et tout se lance
-depuis la racine (extraction, dbt, normalisation, notebooks). Une vue DuckDB garde le chemin relatif de
-ses Parquet et le résout au moment où on la lit : lue depuis un autre dossier, elle casse.
+Le projet est un monolithe : tout se lance depuis la racine du dépôt. La connexion est lue dans les
+variables `POSTGRES_*` de `infra/.env`, chargées par `uv run --env-file` ; les conteneurs doivent tourner
+(`docker compose -f infra/docker-compose.yml up -d --wait`).
 
 ```bash
 uv run --package jobcompass-dbt dbt deps \
     --project-dir dbt --profiles-dir dbt
-uv run --package jobcompass-dbt dbt build \
+uv run --env-file infra/.env --package jobcompass-dbt dbt build \
     --project-dir dbt --profiles-dir dbt --target test
 ```
 
 - `--package jobcompass-dbt` est obligatoire : depuis la racine, `uv run` seul n'installe que
   le package racine, sans dbt, et lance un autre `dbt` trouvé dans le `PATH` (dbt Fusion, par exemple).
-
 - `profiles.yml` est versionné dans `dbt/` (rien dans `~/.dbt/`). Deux targets :
-  - `test` : base `data/test/jobcompass.duckdb`, lit `data/test/` (zone de test) ;
-  - `real` : base `data/jobcompass.duckdb`, lit `data/`.
-- Les bases `.duckdb` ne sont pas versionnées ; supprimer `data/test/` efface aussi la base de test.
+  - `test` : lit `raw_test`, écrit dans `analytics_test_staging`, `_intermediate`, `_marts` ;
+  - `real` : lit `raw`, écrit dans `analytics_staging`, `_intermediate`, `_marts`.
+- Les valeurs par défaut du profil ne servent qu'à `dbt parse` (pre-commit), qui ne se connecte pas.
 
 ### Où mettre la configuration
 
@@ -604,7 +654,7 @@ packages:
 {{
     config(
         schema='jobs',
-        unique_key='job_offer_id',
+        unique_key='hash_job_id',
         strategy='check',
         check_cols=['job_title', 'company_name'],
         hard_deletes='invalidate'
@@ -616,7 +666,7 @@ with
 jobs__job_offers as (
 
     select
-        job_offer_id,
+        hash_job_id,
         job_title,
         company_name
     from {{ ref('jobs__job_offers') }}
@@ -650,7 +700,7 @@ dépôt** ; ce document dit ce qu'ils vérifient, il ne les recopie pas.
 | Fichier | Rôle |
 |---|---|
 | `.pre-commit-config.yaml` (racine) | lance les contrôles ci-dessous, plus ruff pour le Python ; versions figées (`rev`) |
-| `pre-commit/.sqlfluff` | style SQL de dbt Labs, dialecte `duckdb`, templater Jinja ; passé aux hooks par `--config` |
+| `pre-commit/.sqlfluff` | style SQL de dbt Labs, dialecte `postgres`, templater Jinja ; passé aux hooks par `--config` ; ST06 désactivée (les colonnes sont groupées par type) |
 | `pre-commit/sqlfluff_libs/dbt_utils.py` | macros `dbt_utils` simulées pour le templater Jinja |
 | `.dbt-checkpoint.yaml` (racine) | dossier du projet dbt (`dbt`), suivi d'usage désactivé |
 
@@ -691,8 +741,8 @@ pre-commit ne voit que les fichiers suivis par Git : `git add` les nouveaux fich
 ## 10. Check-list avant chaque commit
 
 - [ ] Noms en `stg_<source>__<entite>`, `int_<domaine>__<entite>_<action>`, `<domaine>__<entite>`.
-- [ ] Clé primaire `<objet>_id` testée `unique` + `not_null` ; pas de clé de synthèse si une colonne
-      suffit.
+- [ ] Clé primaire testée `unique` + `not_null` ; clés hachées en `hash_<objet>_id`, calculées par
+      `dbt_utils.generate_surrogate_key`.
 - [ ] En-tête `Model Name / Description / Rules`.
 - [ ] Staging : `source` / `renamed`, aucune jointure, `select *` sauf colonnes à exclure (`star`).
 - [ ] CTE d'import nommées comme le modèle lu, colonnes utiles seulement.
@@ -702,5 +752,33 @@ pre-commit ne voit que les fichiers suivis par Git : `git add` les nouveaux fich
 - [ ] SQL en minuscules, jointures explicites sans alias court, pas de `using`.
 - [ ] `.yml` : description et `data_type` sur chaque modèle et chaque colonne, `data_tests:` avec
       `arguments:`.
-- [ ] dbt lancé depuis la racine du dépôt ; `dbt build --target test` sans erreur.
+- [ ] dbt lancé depuis la racine du dépôt avec `--env-file infra/.env` ; `dbt build --target test`
+      sans erreur.
 - [ ] `uv run pre-commit run --all-files` sans erreur.
+
+---
+
+## 11. Règles métier des modèles
+
+Les règles appliquées par les modèles existants, à garder en tête (et dans le README) :
+
+- **Une offre** = (`source`, `url`), clé `hash_job_id`. Elle n'est téléchargée qu'une fois ; on ne suit
+  pas ses modifications.
+- **Présence** (`int_jobs__job_infos_aggregated`) : `first_seen_at` / `last_seen_at` = première et
+  dernière apparition dans les listes. `is_active` = vue dans le **dernier passage terminé**
+  (`completed`) d'au moins une de ses catégories : un passage en échec ne fait jamais disparaître
+  d'offres.
+- **Dernière extraction d'une page** (`stg_jobup__job_details`) : la plus haute `scraper_version`,
+  **comparée nombre par nombre** (`string_to_array(scraper_version, '.')::int[]`, `0.10.0` après
+  `0.9.0`), puis le `fetched_at` le plus récent. Les versions s'écrivent toujours `x.y.z`, chiffres
+  seulement : vérifié par un test sur la source.
+- **Titre, entreprise, date de publication** (`jobs__job_offers`) : du JSON-LD de la page quand il
+  existe, sinon de la carte du listing (dernière apparition). Jamais d'analyse du HTML : dbt lit des
+  clés, il n'analyse pas de texte.
+- **Normaliseur** : seules les normalisations du normaliseur courant (`config.normalizer`, nom et
+  version) sont retenues ; plusieurs modèles du même normaliseur sur une page : la plus récente.
+- **Compétences** (`skills__job_skills`) : une ligne par offre et par compétence canonique, avec
+  `first_seen_date` / `last_seen_date`, **sans regroupement** : les comptes par jour, semaine ou mois
+  se calculent à partir de ce modèle.
+- **`distinct on`** (choisir une ligne par objet) exige un `order by` sur des colonnes nommées :
+  `-- noqa: AM06` sur cette ligne seulement.

@@ -1,19 +1,24 @@
 # Profil dbt, versionné dans le projet (aucun fichier dans ~/.dbt/), passé à dbt
-# par --profiles-dir dbt. Chemins relatifs à la racine du dépôt, d'où
-# dbt se lance toujours.
-#   test : base DuckDB de la zone de test, à côté des données de test
-#   real : base DuckDB des vraies données
-# Les deux fichiers .duckdb sont ignorés par git ; supprimer data/test efface aussi
-# la base de test.
+# par --profiles-dir dbt. Connexion lue dans les variables POSTGRES_* de
+# infra/.env, chargées par uv : toujours lancer dbt depuis la racine du dépôt avec
+#   uv run --env-file infra/.env --package jobcompass-dbt dbt ...
+# Les valeurs par défaut ne servent qu'à dbt parse (pre-commit), qui ne se
+# connecte pas.
+#   test : lit raw_test (zone de test), écrit dans analytics_test_<couche>
+#   real : lit raw, écrit dans analytics_<couche>
 
 jobcompass:
   target: test
   outputs:
-    test:
-      type: duckdb
-      path: data/test/jobcompass.duckdb
-      threads: 1
+    test: &postgres
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5432') | as_number }}"
+      user: "{{ env_var('POSTGRES_USER', 'jobcompass') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', '') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'jobcompass') }}"
+      schema: analytics_test
+      threads: 4
     real:
-      type: duckdb
-      path: data/jobcompass.duckdb
-      threads: 1
+      <<: *postgres
+      schema: analytics

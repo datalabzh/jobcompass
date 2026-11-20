@@ -1,0 +1,14 @@
+# Raw table of the normalization (bronze), common to every site: schema
+# raw_test (target test) or raw (target real).
+
+version: 2
+
+sources:
+  - name: normalization
+    description: "Raw table of the normalization."
+    schema: "{{ 'raw_test' if target.name == 'test' else 'raw' }}"
+    tables:
+      - name: normalized_job
+        description: >-
+          One row per normalization of a job detail page extraction, signed by
+          the normalizer and its model (NormalizedJob).

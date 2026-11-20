@@ -1,17 +1,26 @@
 -- ---------------------------------------------------------------------------
 -- Model Name: stg_jobup__job_details.sql
--- Description: jobup job detail pages, one row per page (url, raw_hash),
---              raw data block read into columns.
--- Rules: no join. Latest extraction of a page only.
---        Columns read from the JSON-LD are null for paragraphs pages.
---        job_description: JSON-LD description (HTML) or paragraphs joined.
+-- Description: jobup job detail pages, one row per page (job_url), latest
+--              extraction only, JSON-LD keys read into columns.
+-- Rules: no join. Latest extraction of a page: highest scraper_version,
+--        compared number by number (0.10.0 after 0.9.0), then latest
+--        fetched_at. Columns read from the JSON-LD are null for paragraphs
+--        pages (the listing card is used downstream). job_description: the
+--        JSON-LD description (HTML), or the paragraphs joined by line breaks.
 -- ---------------------------------------------------------------------------
 
 with
 
 source as (
 
-    select * from {{ source('jobup', 'raw_job_detail') }}
+    select distinct on (url) *
+    from {{ source('jobup', 'raw_job_detail') }}
+    where source = 'jobup'
+    {# The latest extraction of each page: distinct on needs named columns #}
+    order by  -- noqa: AM06
+        url asc,
+        string_to_array(scraper_version, '.')::int[] desc,
+        fetched_at desc
 
 ),
 
@@ -20,42 +29,44 @@ renamed as (
     select
 
         ---------- ids
-        {{ dbt_utils.generate_surrogate_key(['url', 'raw_hash']) }}
-            as job_detail_id,
+        {{ dbt_utils.generate_surrogate_key(
+            ['hash_html_id', 'scraper', 'scraper_version']
+        ) }} as hash_job_detail_id,
+        {{ dbt_utils.generate_surrogate_key(['source', 'url']) }}
+            as hash_job_id,
+        hash_html_id,
 
         ---------- strings
-        raw_hash,
         url as job_url,
         source as site_name,
         scraper as scraper_name,
         scraper_version,
         schema_version,
         payload_format,
-        payload,
-        payload ->> '$.title' as job_title,
-        payload ->> '$.hiringOrganization.name' as company_name,
+        payload ->> 'title' as job_title,
+        payload -> 'hiringOrganization' ->> 'name' as company_name,
         case
-            when payload_format = 'json_ld' then payload ->> '$.description'
-            else array_to_string(
-                cast(cast(payload as json) as varchar[]), chr(10)
-            )
+            when payload_format = 'json_ld' then payload ->> 'description'
+            else
+                array_to_string(
+                    array(select jsonb_array_elements_text(payload)), chr(10)
+                )
         end as job_description,
+        payload,
 
         ---------- booleans
         is_test,
 
         ---------- dates
-        try_cast(left(payload ->> '$.datePosted', 10) as date) as posted_date,
+        case
+            when pg_input_is_valid(left(payload ->> 'datePosted', 10), 'date')
+                then left(payload ->> 'datePosted', 10)::date
+        end as posted_date,
 
         ---------- timestamps
         fetched_at
 
     from source
-    {# A page re-extracted later: the latest extraction only #}
-    qualify row_number() over (
-        partition by url, raw_hash
-        order by fetched_at desc, scraper_version desc
-    ) = 1
 
 )
 

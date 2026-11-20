@@ -1,12 +1,13 @@
 # Projet dbt de JobCompass (ADR-0002) : Python dépose le brut, dbt met en forme.
-#   sources  (bronze) : les Parquet bruts, lus tels quels, jamais modifiés
-#   staging  (silver) : un modèle par table brute et par site, stg_<site>__<table>
-#   marts    (gold)   : plus tard (normalisation, clusters)
-# Lancer depuis la racine du dépôt (chemins relatifs à la racine) :
-#   uv run --package jobcompass-dbt dbt build \
-#     --project-dir dbt --profiles-dir dbt \
-#     --target test   (ou --target real)
-# Les vues gardent le chemin relatif de leurs Parquet : les lire depuis la racine.
+#   sources      (bronze) : tables brutes de Postgres (raw, ou raw_test pour le
+#                           target test) et config.normalizer, jamais modifiées
+#   staging      (silver) : une source mise à plat, sans jointure, en vues
+#   intermediate (silver) : jointures et regroupements, en vues
+#   marts        (gold)   : produits finaux, en tables
+# Schémas écrits : analytics_<couche> (real) ou analytics_test_<couche> (test).
+# Lancer depuis la racine du dépôt :
+#   uv run --env-file infra/.env --package jobcompass-dbt dbt build \
+#     --project-dir dbt --profiles-dir dbt --target test   (ou --target real)
 
 name: "jobcompass"
 version: "0.1.0"
@@ -28,6 +29,17 @@ models:
   jobcompass:
     staging:
       +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts
+      jobs:
+        +tags: ["jobs"]
+      skills:
+        +tags: ["skills"]
 
 flags:
   require_generic_test_arguments_property: true

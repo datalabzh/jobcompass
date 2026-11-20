@@ -1,0 +1,66 @@
+version: 2
+
+models:
+  - name: int_skills__normalized_skills_unnested
+    description: >-
+      Skills of the normalized job detail pages, one row per page
+      extraction and canonical skill, current normalizer only (latest
+      normalization of a page).
+    columns:
+      - name: hash_normalized_skill_id
+        data_type: text
+        description: >-
+          Key of the row: hash of hash_normalized_job_id and
+          canonical_skill.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: hash_normalized_job_id
+        data_type: text
+        description: "Key of the normalization the skill comes from."
+        data_tests:
+          - not_null
+
+      - name: hash_job_detail_id
+        data_type: text
+        description: "Key of the page extraction that was normalized."
+        data_tests:
+          - not_null
+
+      - name: canonical_skill
+        data_type: text
+        description: "Canonical form of the skill, e.g. postgresql."
+        data_tests:
+          - not_null
+
+      - name: raw_skill
+        data_type: text
+        description: "Skill as written in the source, e.g. Postgres."
+
+      - name: skill_origin
+        data_type: text
+        description: >-
+          Where the skill comes from: declared by the source or
+          detected in the text.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["declared", "detected"]
+
+      - name: normalizer_name
+        data_type: text
+        description: "Name of the current normalizer."
+
+      - name: normalizer_version
+        data_type: text
+        description: "Version of the current normalizer."
+
+      - name: model_name
+        data_type: text
+        description: "Name of the model used."
+
+      - name: model_version
+        data_type: text
+        description: "Version of the model used."

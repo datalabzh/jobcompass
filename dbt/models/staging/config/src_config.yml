@@ -1,0 +1,13 @@
+# Configuration tables, the same for every target (schema config).
+
+version: 2
+
+sources:
+  - name: config
+    description: "Configuration tables, updated by the team."
+    schema: config
+    tables:
+      - name: normalizer
+        description: >-
+          One row per known normalizer and version; exactly one is current
+          (is_current).

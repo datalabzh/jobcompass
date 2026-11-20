@@ -1,0 +1,97 @@
+version: 2
+
+models:
+  - name: jobs__job_offers
+    description: >-
+      jobup job offers, one row per offer, with its presence and its
+      latest detail page. Title, company and posted date come from the
+      JSON-LD when there is one, else from the latest listing card. Offers
+      never downloaded are kept (has_detail = false).
+    columns:
+      - name: hash_job_id
+        data_type: text
+        description: "Key of the job offer: hash of source and url."
+        data_tests:
+          - unique
+          - not_null
+
+      - name: hash_job_detail_id
+        data_type: text
+        description: >-
+          Key of the latest page extraction; null if never downloaded.
+
+      - name: job_url
+        data_type: text
+        description: "URL of the job detail page on jobup."
+        data_tests:
+          - not_null
+
+      - name: site_name
+        data_type: text
+        description: "Site the offer comes from."
+
+      - name: job_title
+        data_type: text
+        description: "Job title: JSON-LD, else listing card."
+
+      - name: company_name
+        data_type: text
+        description: "Hiring company: JSON-LD, else listing card."
+
+      - name: job_place
+        data_type: text
+        description: "Place of the job, from the latest listing card."
+
+      - name: payload_format
+        data_type: text
+        description: >-
+          Format of the raw block of the page: json_ld or paragraphs;
+          null if never downloaded.
+
+      - name: job_description
+        data_type: text
+        description: >-
+          Job description from the detail page; null if never
+          downloaded.
+
+      - name: runs_seen
+        data_type: bigint
+        description: "Number of runs that saw the offer."
+        data_tests:
+          - not_null
+
+      - name: is_active
+        data_type: boolean
+        description: >-
+          True if seen in the latest completed run of at least one
+          category.
+        data_tests:
+          - not_null
+
+      - name: has_detail
+        data_type: boolean
+        description: "True if the detail page was downloaded."
+        data_tests:
+          - not_null
+
+      - name: posted_date
+        data_type: date
+        description: >-
+          Publication date: JSON-LD datePosted, else first publication
+          of the listing card.
+
+      - name: first_seen_at
+        data_type: timestamp with time zone
+        description: "First sighting of the offer on a result page, in UTC."
+        data_tests:
+          - not_null
+
+      - name: last_seen_at
+        data_type: timestamp with time zone
+        description: "Latest sighting of the offer on a result page, in UTC."
+        data_tests:
+          - not_null
+
+      - name: fetched_at
+        data_type: timestamp with time zone
+        description: "When the detail page was downloaded, in UTC."

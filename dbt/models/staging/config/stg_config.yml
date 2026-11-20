@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: stg_config__normalizers
+    description: >-
+      Known normalizers, one row per normalizer and version. Exactly one
+      is current (unique index in Postgres).
+    columns:
+      - name: hash_normalizer_id
+        data_type: text
+        description: "Key of the normalizer: hash of its name and version."
+        data_tests:
+          - unique
+          - not_null
+
+      - name: normalizer_name
+        data_type: text
+        description: "Name of the normalizer."
+        data_tests:
+          - not_null
+
+      - name: normalizer_version
+        data_type: text
+        description: "Version of the normalizer."
+        data_tests:
+          - not_null
+
+      - name: normalizer_description
+        data_type: text
+        description: "What the normalizer does, in one sentence."
+
+      - name: is_current
+        data_type: boolean
+        description: "True for the normalizer used by the marts."
+        data_tests:
+          - not_null
+
+      - name: updated_at
+        data_type: timestamp with time zone
+        description: "Last change of the row, in UTC."

@@ -1,6 +1,6 @@
 [project]
 name = "jobcompass-dbt"
 version = "0.1.0"
-description = "dbt project: raw Parquet tables -> staging (silver) -> marts (gold)"
+description = "dbt project: raw Postgres tables -> staging (silver) -> marts (gold)"
 requires-python = ">=3.12"
-dependencies = ["dbt-duckdb>=1.9"]
+dependencies = ["dbt-postgres>=1.9"]

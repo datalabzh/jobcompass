@@ -1,0 +1,88 @@
+version: 2
+
+models:
+  - name: stg_normalization__normalized_jobs
+    description: >-
+      Normalizations of job detail pages, one row per normalization (page
+      extraction, normalizer, model and their versions). Every normalizer
+      is kept: the current one is chosen downstream.
+    columns:
+      - name: hash_normalized_job_id
+        data_type: text
+        description: >-
+          Key of the normalization: hash of the page extraction key,
+          normalizer, model and their versions.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: hash_job_detail_id
+        data_type: text
+        description: >-
+          Key of the page extraction it normalizes, computed as in
+          stg_jobup__job_details.
+        data_tests:
+          - not_null
+
+      - name: hash_html_id
+        data_type: text
+        description: "SHA-256 of the raw HTML page, copied from raw_job_detail."
+        data_tests:
+          - not_null
+
+      - name: site_name
+        data_type: text
+        description: "Site of the page."
+
+      - name: scraper_name
+        data_type: text
+        description: >-
+          Scraper of the page extraction, copied from raw_job_detail.
+
+      - name: scraper_version
+        data_type: text
+        description: "Version of that scraper, copied from raw_job_detail."
+
+      - name: normalizer_name
+        data_type: text
+        description: "Name of the normalizer."
+        data_tests:
+          - not_null
+
+      - name: normalizer_version
+        data_type: text
+        description: "Version of the normalizer."
+        data_tests:
+          - not_null
+
+      - name: model_name
+        data_type: text
+        description: "Name of the model used by the normalizer."
+
+      - name: model_version
+        data_type: text
+        description: "Version of the model."
+
+      - name: normalizer_description
+        data_type: text
+        description: "What the normalizer and its model do, in one sentence."
+
+      - name: schema_version
+        data_type: text
+        description: "Version of the NormalizedJob contract of the raw row."
+
+      - name: skills
+        data_type: jsonb
+        description: "Skills found: list of {raw, canonical, origin}."
+        data_tests:
+          - not_null
+
+      - name: is_test
+        data_type: boolean
+        description: "True if written by a test run (limited)."
+
+      - name: normalized_at
+        data_type: timestamp with time zone
+        description: "When the page was normalized, in UTC."
+        data_tests:
+          - not_null

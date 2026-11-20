@@ -6,7 +6,11 @@
 # Ni base ni dbt compile.
 
 [sqlfluff]
-dialect = duckdb
+dialect = postgres
+# ST06 (simple columns before calculations) is excluded: the convention groups
+# the columns by type (docs/conventions/dbt.md, part 2), so a computed boolean
+# stays in the booleans group.
+exclude_rules = structure.column_order
 templater = jinja
 max_line_length = 80
 

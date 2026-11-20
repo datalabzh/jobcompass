@@ -1,27 +1,34 @@
-# Raw tables of jobup.ch (bronze), written by the Python extraction.
-# Files: <root>/<table>/source=jobup/date=<day>/part-*.parquet, root = the one
-# of the Python storage: data/test (target test) or data (target real),
-# relative to the repository root.
-# union_by_name: files of different contract versions are read together.
-# hive_partitioning disabled: source is already a column, date (write day) is
-# not useful.
+# Raw tables of jobup.ch (bronze), written by the Python extraction into
+# Postgres: schema raw_test (target test) or raw (target real). The tables hold
+# every site: the staging models keep source = 'jobup'.
 
 version: 2
 
 sources:
   - name: jobup
-    description: "Raw tables of jobup.ch, as written by the extraction."
-    meta:
-      external_location: >-
-        read_parquet(
-        '{{ "data/test" if target.name == "test" else "data" }}/{name}/source=jobup/*/*.parquet',
-        union_by_name = true, hive_partitioning = false)
+    description: "Raw tables of the extraction, read for jobup.ch."
+    schema: "{{ 'raw_test' if target.name == 'test' else 'raw' }}"
     tables:
       - name: raw_job_info
         description: >-
           One row per job seen on a result page, per run (RawJobInfo).
 
+      - name: log_raw_job_info
+        description: >-
+          One row per extraction run of the result pages of a category
+          (LogRawJobInfo).
+
       - name: raw_job_detail
         description: >-
-          One row per detail page downloaded, with its raw block
-          (RawJobDetail).
+          One row per extraction of a detail page by a version of the scraper,
+          with its raw block (RawJobDetail).
+        columns:
+          - name: scraper_version
+            description: >-
+              Version of the scraper, always x.y.z with numbers only: the
+              staging compares versions number by number.
+            data_tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: "~ '^[0-9]+\\.[0-9]+\\.[0-9]+$'"
