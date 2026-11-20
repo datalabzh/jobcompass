@@ -1,5 +1,5 @@
 [project]
-name = "jobcompass-transformation"
+name = "jobcompass-dbt"
 version = "0.1.0"
 description = "dbt project: raw Parquet tables -> staging (silver) -> marts (gold)"
 requires-python = ">=3.12"

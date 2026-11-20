@@ -14,7 +14,7 @@ dans ce projet.
 Dans ce document, `<source>` désigne une source de données (un site : `jobup`…), `<domaine>` un domaine
 métier (`jobs`, `skills`…), `<entite>` l'objet décrit par un modèle (`job_details`, `clusters`…).
 
-Le projet dbt est dans `transformation/` ; la base est **DuckDB** ; les sources sont les fichiers
+Le projet dbt est dans `dbt/` ; la base est **DuckDB** ; les sources sont les fichiers
 Parquet bruts déposés par l'extraction Python (ADR-0002).
 
 ---
@@ -46,7 +46,7 @@ Un simple underscore sépare les mots à l'intérieur d'une partie.
 ### Dossiers
 
 ```
-transformation/
+dbt/
   dbt_project.yml
   profiles.yml
   packages.yml
@@ -504,16 +504,16 @@ depuis la racine (extraction, dbt, normalisation, notebooks). Une vue DuckDB gar
 ses Parquet et le résout au moment où on la lit : lue depuis un autre dossier, elle casse.
 
 ```bash
-uv run --package jobcompass-transformation dbt deps \
-    --project-dir transformation --profiles-dir transformation
-uv run --package jobcompass-transformation dbt build \
-    --project-dir transformation --profiles-dir transformation --target test
+uv run --package jobcompass-dbt dbt deps \
+    --project-dir dbt --profiles-dir dbt
+uv run --package jobcompass-dbt dbt build \
+    --project-dir dbt --profiles-dir dbt --target test
 ```
 
-- `--package jobcompass-transformation` est obligatoire : depuis la racine, `uv run` seul n'installe que
+- `--package jobcompass-dbt` est obligatoire : depuis la racine, `uv run` seul n'installe que
   le package racine, sans dbt, et lance un autre `dbt` trouvé dans le `PATH` (dbt Fusion, par exemple).
 
-- `profiles.yml` est versionné dans `transformation/` (rien dans `~/.dbt/`). Deux targets :
+- `profiles.yml` est versionné dans `dbt/` (rien dans `~/.dbt/`). Deux targets :
   - `test` : base `data/test/jobcompass.duckdb`, lit `data/test/` (zone de test) ;
   - `real` : base `data/jobcompass.duckdb`, lit `data/`.
 - Les bases `.duckdb` ne sont pas versionnées ; supprimer `data/test/` efface aussi la base de test.
@@ -650,10 +650,10 @@ dépôt** ; ce document dit ce qu'ils vérifient, il ne les recopie pas.
 | Fichier | Rôle |
 |---|---|
 | `.pre-commit-config.yaml` (racine) | lance les contrôles ci-dessous, plus ruff pour le Python ; versions figées (`rev`) |
-| `transformation/.sqlfluff` | style SQL de dbt Labs, dialecte `duckdb`, templater Jinja |
-| `transformation/.sqlfluffignore` | exclut `target/`, `dbt_packages/`, `logs/`, `macros/`, `snapshots/` |
-| `transformation/sqlfluff_libs/dbt_utils.py` | macros `dbt_utils` simulées pour le templater Jinja |
-| `.dbt-checkpoint.yaml` (racine) | dossier du projet dbt (`transformation`), suivi d'usage désactivé |
+| `dbt/.sqlfluff` | style SQL de dbt Labs, dialecte `duckdb`, templater Jinja |
+| `dbt/.sqlfluffignore` | exclut `target/`, `dbt_packages/`, `logs/`, `macros/`, `snapshots/` |
+| `dbt/sqlfluff_libs/dbt_utils.py` | macros `dbt_utils` simulées pour le templater Jinja |
+| `.dbt-checkpoint.yaml` (racine) | dossier du projet dbt (`dbt`), suivi d'usage désactivé |
 
 Ce qui est vérifié :
 
@@ -663,7 +663,7 @@ Ce qui est vérifié :
   (`sqlfluff_libs/`) : pas besoin de base ni de `dbt compile`. SQLFluff tourne dans l'environnement de
   pre-commit : ce n'est pas une dépendance uv.
 - **dbt parse** (hook local) : rafraîchit le manifest avec le dbt du projet
-  (`uv run --package jobcompass-transformation`).
+  (`uv run --package jobcompass-dbt`).
 - **dbt-checkpoint** (lit `target/manifest.json`, rafraîchi par `dbt parse`) : chaque modèle et chaque
   colonne a une description ; chaque modèle a ses tests `unique` et `not_null` ; noms de modèles conformes
   (`stg_<source>__<entite>`, `int_<domaine>__<entite>`, `<domaine>__<entite>`).

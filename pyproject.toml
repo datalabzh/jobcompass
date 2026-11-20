@@ -13,7 +13,7 @@ dev = [
 ]
 
 [tool.uv.workspace]
-members = ["common/catalog", "common/contracts", "common/interfaces", "storage", "extraction", "normalization", "entrypoints", "transformation"]
+members = ["common/catalog", "common/contracts", "common/interfaces", "storage", "extraction", "normalization", "entrypoints", "dbt"]
 
 [tool.ruff]
 line-length = 88

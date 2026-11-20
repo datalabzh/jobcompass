@@ -43,7 +43,7 @@ Monolithe, workspace uv : chaque brique est un package avec ses propres dépenda
 | `storage/` | écriture des Parquet |
 | `normalization/` | normalisation des compétences |
 | `entrypoints/` | CLI |
-| `transformation/` | projet dbt (staging, intermediate, marts) |
+| `dbt/` | projet dbt (staging, intermediate, marts) |
 | `orchestration/` | Dagster, plus tard (vide pour l'instant) |
 | `docs/` | documentation Zensical : ADR, fil rouge, conventions |
 | `data/` | données (non versionnées) ; `data/test/` = zone de test |
@@ -60,7 +60,7 @@ Monolithe, workspace uv : chaque brique est un package avec ses propres dépenda
 uv sync --package jobcompass-extraction
 
 # dbt, toujours depuis la racine, avec le dbt de la brique (--package)
-uv run --package jobcompass-transformation dbt build --project-dir transformation --profiles-dir transformation --target test
+uv run --package jobcompass-dbt dbt build --project-dir dbt --profiles-dir dbt --target test
 
 # Documentation
 uv run zensical serve

@@ -3,8 +3,8 @@
 #   staging  (silver) : un modèle par table brute et par site, stg_<site>__<table>
 #   marts    (gold)   : plus tard (normalisation, clusters)
 # Lancer depuis la racine du dépôt (chemins relatifs à la racine) :
-#   uv run --package jobcompass-transformation dbt build \
-#     --project-dir transformation --profiles-dir transformation \
+#   uv run --package jobcompass-dbt dbt build \
+#     --project-dir dbt --profiles-dir dbt \
 #     --target test   (ou --target real)
 # Les vues gardent le chemin relatif de leurs Parquet : les lire depuis la racine.
 

@@ -14,9 +14,9 @@ repos:
     rev: 4.5.0
     hooks:
       - id: sqlfluff-lint
-        files: ^transformation/models/
+        files: ^dbt/models/
       - id: sqlfluff-fix
-        files: ^transformation/models/
+        files: ^dbt/models/
         stages: [manual]
 
   # Rafraîchit target/manifest.json avec le dbt du projet, lu par les hooks
@@ -26,28 +26,28 @@ repos:
       - id: dbt-parse
         name: dbt parse
         entry: >-
-          uv run --package jobcompass-transformation dbt parse
-          --project-dir transformation --profiles-dir transformation
+          uv run --package jobcompass-dbt dbt parse
+          --project-dir dbt --profiles-dir dbt
         language: system
         pass_filenames: false
-        files: ^transformation/
+        files: ^dbt/
 
   - repo: https://github.com/dbt-checkpoint/dbt-checkpoint
     rev: v2.1.0
     hooks:
       - id: check-model-has-description
-        files: ^transformation/models/
+        files: ^dbt/models/
       - id: check-model-columns-have-desc
-        files: ^transformation/models/
+        files: ^dbt/models/
       - id: check-model-has-tests-by-name
         args: ["--tests", "unique=1", "not_null=1", "--"]
-        files: ^transformation/models/
+        files: ^dbt/models/
       - id: check-model-name-contract
         args: ["--pattern", "^stg_[a-z0-9]+__[a-z0-9_]+$", "--"]
-        files: ^transformation/models/staging/
+        files: ^dbt/models/staging/
       - id: check-model-name-contract
         args: ["--pattern", "^int_[a-z0-9]+__[a-z0-9_]+$", "--"]
-        files: ^transformation/models/intermediate/
+        files: ^dbt/models/intermediate/
       - id: check-model-name-contract
         args: ["--pattern", "^[a-z0-9]+__[a-z0-9_]+$", "--"]
-        files: ^transformation/models/marts/
+        files: ^dbt/models/marts/

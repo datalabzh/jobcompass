@@ -12,12 +12,12 @@ members = [
     "jobcompass",
     "jobcompass-catalog",
     "jobcompass-contracts",
+    "jobcompass-dbt",
     "jobcompass-entrypoints",
     "jobcompass-extraction",
     "jobcompass-interfaces",
     "jobcompass-normalization",
     "jobcompass-storage",
-    "jobcompass-transformation",
 ]
 
 [[package]]
@@ -625,6 +625,17 @@ requires-dist = [{ name = "pydantic", specifier = ">=2.10" }]
 dev = [{ name = "pytest", specifier = ">=8" }]
 
 [[package]]
+name = "jobcompass-dbt"
+version = "0.1.0"
+source = { virtual = "dbt" }
+dependencies = [
+    { name = "dbt-duckdb" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "dbt-duckdb", specifier = ">=1.9" }]
+
+[[package]]
 name = "jobcompass-entrypoints"
 version = "0.1.0"
 source = { editable = "entrypoints" }
@@ -771,17 +782,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8" }]
-
-[[package]]
-name = "jobcompass-transformation"
-version = "0.1.0"
-source = { virtual = "transformation" }
-dependencies = [
-    { name = "dbt-duckdb" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "dbt-duckdb", specifier = ">=1.9" }]
 
 [[package]]
 name = "jsonschema"

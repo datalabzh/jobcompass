@@ -1,5 +1,5 @@
 # Profil dbt, versionné dans le projet (aucun fichier dans ~/.dbt/), passé à dbt
-# par --profiles-dir transformation. Chemins relatifs à la racine du dépôt, d'où
+# par --profiles-dir dbt. Chemins relatifs à la racine du dépôt, d'où
 # dbt se lance toujours.
 #   test : base DuckDB de la zone de test, à côté des données de test
 #   real : base DuckDB des vraies données
