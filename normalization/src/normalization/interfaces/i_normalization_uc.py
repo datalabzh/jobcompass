@@ -3,12 +3,16 @@ i_normalization_uc.py
 
 Description : ce que fournit toute normalisation : une classe, avec une seule
               méthode publique, execute.
-Règles      : commune à tous les sites : lit la table extracted_job d'une source et
-              écrit normalized_job (contrats ExtractedJob -> NormalizedJob).
+Règles      : commune à tous les sites : lit la table raw_job_detail d'une source
+              (le bloc de données de chaque page, à analyser) et écrit normalized_job
+              (contrats RawJobDetail -> NormalizedJob).
+              Chaque NormalizedJob recopie tels quels hash_html_id, scraper et
+              scraper_version de la ligne lue : aucun identifiant n'est calculé.
               Fourni à la création : source, db_storage, is_test, max_jobs
               (None = sans limite), now.
-              Jobs à normaliser = jobs extraits - déjà normalisés par ce
-              normaliseur, ce modèle et leurs versions ; traités et écrits un par un.
+              Pages à normaliser = lignes de raw_job_detail - déjà normalisées par
+              ce normaliseur, ce modèle et leurs versions ; traitées et écrites une
+              par une.
               Chaque NormalizedJob porte la signature du normaliseur et du modèle
               (noms, versions et description en une phrase), déclarée par la
               classe : un nouveau normaliseur ou modèle ajoute des lignes, les
@@ -49,7 +53,7 @@ class NormalizationReport:
 
 
 class INormalizationUseCase(IUseCase):
-    """Turns the extracted jobs of a source into normalized jobs."""
+    """Turns the job detail pages of a source into normalized jobs."""
 
     normalizer: str  # name of the normalizer, e.g. 'fake_normalization'
     normalizer_version: str  # change what it does = new version

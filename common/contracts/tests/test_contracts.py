@@ -35,7 +35,7 @@ def job_detail(**changes: object) -> RawJobDetail:
         "source": "jobup",
         "is_test": False,
         "url": URL,
-        "raw_hash": HASH,
+        "hash_html_id": HASH,
         "content_type": "text/html",
         "fetched_at": NOW,
         "http_status": 200,
@@ -82,7 +82,7 @@ def test_log_raw_job_info_valid() -> None:
 def test_job_detail_valid() -> None:
     """A complete RawJobDetail is accepted, in version 2.0."""
     detail: RawJobDetail = job_detail()
-    assert detail.schema_version == "2.0"
+    assert detail.schema_version == "3.0"
     assert detail.payload_format == "json_ld"
 
 
@@ -128,9 +128,9 @@ def test_naive_datetime_rejected() -> None:
 
 
 def test_invalid_hash_rejected() -> None:
-    """A raw_hash that is not a SHA-256 is rejected."""
+    """A hash_html_id that is not a SHA-256 is rejected."""
     with pytest.raises(ValidationError):
-        job_detail(raw_hash="not-a-hash")
+        job_detail(hash_html_id="not-a-hash")
 
 
 def test_non_2xx_detail_rejected() -> None:
@@ -169,9 +169,9 @@ def test_normalized_job_valid() -> None:
     job: NormalizedJob = NormalizedJob(
         source="jobup",
         is_test=False,
-        url=URL,
-        raw_hash=HASH,
-        parser_version="1.0.0",
+        hash_html_id=HASH,
+        scraper="jobup_extraction",
+        scraper_version="0.1.0",
         normalizer="fake_normalization",
         normalizer_version="0.1.0",
         model="keyword_list",
@@ -184,7 +184,7 @@ def test_normalized_job_valid() -> None:
             )
         ],
     )
-    assert job.skills[0].origin == "detected"
+    assert (job.schema_version, job.skills[0].origin) == ("2.0", "detected")
 
 
 def test_unknown_skill_origin_rejected() -> None:

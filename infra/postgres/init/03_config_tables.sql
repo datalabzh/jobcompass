@@ -6,6 +6,9 @@
 --               que les lignes de normalized_job produites par le normaliseur
 --               courant. Changer de courant = une transaction qui retire l'ancien
 --               puis désigne le nouveau.
+--               Au démarrage, le normaliseur courant est fake_normalization : il se
+--               comporte comme un vrai normaliseur, en attendant celui de l'équipe
+--               NLP. Sa version suit normalizer_version de FakeNormalizationUseCase.
 
 create table config.normalizer (
     normalizer          text        not null,
@@ -20,3 +23,13 @@ create table config.normalizer (
 create unique index normalizer_one_current
     on config.normalizer (is_current)
     where is_current;
+
+-- Normaliseur courant au démarrage.
+insert into config.normalizer (normalizer, normalizer_version, description, is_current)
+values (
+    'fake_normalization',
+    '0.2.0',
+    'Fake skills to test the pipeline: the skills declared by the source, plus'
+    ' about thirty fixed technology keywords found in the title and description.',
+    true
+);

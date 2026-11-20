@@ -135,7 +135,7 @@ def test_every_extraction_contract_is_storable(storage: PostgresDbStorage) -> No
                 source="fake",
                 is_test=True,
                 url=A,
-                raw_hash="0" * 64,
+                hash_html_id="0" * 64,
                 content_type="text/html",
                 fetched_at=NOW,
                 http_status=200,

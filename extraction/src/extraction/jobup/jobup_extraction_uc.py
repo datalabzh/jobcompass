@@ -21,7 +21,7 @@ Règles      : JobupExtractionUseCase (déclarée dans le site.toml) lance les d
                  (max_failures échecs), au plus max_jobs, un par un, chacun écrit
                  dès qu'il est traité : un plantage ne fait rien refaire de ce qui
                  est écrit.
-                 Succès (réponse 2xx) : le HTML d'abord, sous son raw_hash, puis un
+                 Succès (réponse 2xx) : le HTML d'abord, sous son hash_html_id, puis un
                  RawJobDetail avec le bloc brut de la page (parseur, 'job_detail') ;
                  échec : un LogRawJobDetail.
               name + version = enregistrés avec chaque page (scraper,
@@ -39,7 +39,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from catalog.tables import Table
-from contracts.components.field_types import RunStatus, compute_raw_hash
+from contracts.components.field_types import RunStatus, compute_hash_html_id
 from contracts.jobs.log_raw_job_detail import LogRawJobDetail
 from contracts.jobs.log_raw_job_info import LogRawJobInfo
 from contracts.jobs.raw_job_detail import RawJobDetail
@@ -315,8 +315,8 @@ class _JobupJobDetailsUseCase(IUseCase):
             return self._download_failure(
                 url, attempted_at, f"HTTP {answer.http_status}"
             )
-        raw_hash: str = compute_raw_hash(answer.content)
-        file_name: str = f"{Table.RAW_JOB_DETAIL_HTML}/{raw_hash}.html"
+        hash_html_id: str = compute_hash_html_id(answer.content)
+        file_name: str = f"{Table.RAW_JOB_DETAIL_HTML}/{hash_html_id}.html"
         if not self.file_storage.has_file(file_name):
             self.file_storage.put_file(file_name, answer.content)
         detail: object = self.parser.parse(JOB_DETAIL, answer.content)
@@ -326,7 +326,7 @@ class _JobupJobDetailsUseCase(IUseCase):
             source=self.source,
             is_test=self.is_test,
             url=url,
-            raw_hash=raw_hash,
+            hash_html_id=hash_html_id,
             content_type=answer.content_type,
             fetched_at=attempted_at,
             http_status=answer.http_status,

@@ -151,7 +151,7 @@ def test_details_limited_and_stored(storages: Storages) -> None:
         DETAIL.format(id="b"),
     ]
     assert all(
-        storages.files.has_file(f"{Table.RAW_JOB_DETAIL_HTML}/{r['raw_hash']}.html")
+        storages.files.has_file(f"{Table.RAW_JOB_DETAIL_HTML}/{r['hash_html_id']}.html")
         for r in receipts
     )
 
@@ -199,7 +199,7 @@ def test_test_run_writes_apart(storages: Storages) -> None:
         )
     }
     assert info["run_id"] not in real_runs
-    html: str = f"{Table.RAW_JOB_DETAIL_HTML}/{detail['raw_hash']}.html"
+    html: str = f"{Table.RAW_JOB_DETAIL_HTML}/{detail['hash_html_id']}.html"
     assert not S3FileStorage(is_test=False).has_file(html)
 
 

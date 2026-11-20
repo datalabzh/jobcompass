@@ -3,7 +3,7 @@ field_types.py
 
 Description : les composants dont sont faits les contrats : listes fermées de
               valeurs (RunStatus, SkillOrigin, PayloadFormat), types de champs nommés et
-              fonction raw_hash.
+              fonction compute_hash_html_id.
 Règles      : les énumérations sont des StrEnum, pour que les tables contiennent
               des valeurs lisibles.
               Les types de champs portent leur motif de validation et leur
@@ -11,9 +11,11 @@ Règles      : les énumérations sont des StrEnum, pour que les tables contienn
                 SourceSlug = minuscules, chiffres et underscores, ex. 'jobup'.
                 JobUrl     = URL http(s) sans espace.
                 Sha256Hash = 64 caractères hexadécimaux minuscules.
-              raw_hash = SHA-256 du contenu non compressé, en hexadécimal minuscule.
-              Toutes les briques le calculent avec compute_raw_hash : un même contenu
-              a toujours le même hash et le même chemin de stockage.
+              hash_html_id = SHA-256 du contenu non compressé d'une page, en
+              hexadécimal minuscule ; c'est le seul hash calculé en Python (les
+              autres identifiants sont calculés par dbt). Toutes les briques le
+              calculent avec compute_hash_html_id : un même contenu a toujours le
+              même hash et le même chemin de stockage.
 """
 
 import hashlib
@@ -65,6 +67,6 @@ Sha256Hash: TypeAlias = Annotated[
 # --- functions ------------------------------------------------------------------
 
 
-def compute_raw_hash(content: bytes) -> str:
-    """Return the raw_hash of a content: SHA-256 of the uncompressed bytes, hex."""
+def compute_hash_html_id(content: bytes) -> str:
+    """Return the hash_html_id of a page: SHA-256 of the uncompressed bytes, hex."""
     return hashlib.sha256(content).hexdigest()

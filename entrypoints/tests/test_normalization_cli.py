@@ -5,22 +5,19 @@ Description : tests du point d'entrée de la normalisation.
 Règles      : le normaliseur par défaut est utilisé sans --normalizer ; un
               normaliseur inconnu arrête la commande ; sans option, la limite du
               normalizer.toml s'applique (test) ; --full la lève et refuse d'être
-              combiné ; un passage complet normalise les jobs extraits d'une
-              source.
+              combiné ; un passage de test normalise les pages de la zone de test
+              (vrai Postgres, zone de test vidée avant).
 """
 
-from datetime import UTC, date, datetime
-from pathlib import Path
+import json
+from datetime import UTC, datetime
 
 import pytest
 
 from catalog.tables import Table
-from contracts import ExtractedJob
-from entrypoints.config.config_reader import DbStorageSection
-from entrypoints.config.normalization_config import (
-    NormalizationConfig,
-    NormalizationConfigReader,
-)
+from contracts.components.field_types import PayloadFormat
+from contracts.jobs.raw_job_detail import RawJobDetail
+from entrypoints.config.normalization_config import NormalizationConfigReader
 from entrypoints.normalization_cli import build_normalization, main, parse_args
 from entrypoints.run_limits import RunLimits, resolve_limits
 from normalization.interfaces.i_normalization_uc import NormalizationReport
@@ -52,44 +49,38 @@ def test_limits() -> None:
     assert main(["run", "jobup", "--full", "--max-jobs", "3"]) == 2
 
 
-def test_full_run_normalizes(tmp_path: Path) -> None:
-    """A full run normalizes the extracted jobs of the source, as real data."""
-    storage: PostgresDbStorage = PostgresDbStorage(is_test=True)  # rewritten at step 3
+def test_test_run_normalizes() -> None:
+    """A test run normalizes the job detail pages of the test zone."""
+    storage: PostgresDbStorage = PostgresDbStorage(is_test=True)
+    storage.clear_test_zone()
     storage.append(
-        Table.EXTRACTED_JOB,
+        Table.RAW_JOB_DETAIL,
         [
-            ExtractedJob(
+            RawJobDetail(
                 source="jobup",
-                is_test=False,
+                is_test=True,
                 url="https://www.jobup.ch/fr/emplois/detail/a/",
-                raw_hash="a" * 64,
-                parser="jobup_parser",
-                parser_version="1.0.0",
-                parsed_at=datetime(2026, 11, 17, tzinfo=UTC),
-                title="Data Engineer",
-                company=None,
-                description="Python and dbt.",
-                date_posted=date(2026, 11, 17),
-                postal_code=None,
-                employment_types=[],
-                categories=[],
-                declared_skills=[],
+                hash_html_id="a" * 64,
+                content_type="text/html",
+                fetched_at=datetime(2026, 11, 17, tzinfo=UTC),
+                http_status=200,
+                scraper="jobup_extraction",
+                scraper_version="0.1.0",
+                payload_format=PayloadFormat.JSON_LD,
+                payload=json.dumps(
+                    {"title": "Data Engineer", "description": "Python and dbt."}
+                ),
             )
         ],
     )
-    loaded: NormalizationConfig = NormalizationConfigReader.load_normalization()
-    db_storage: DbStorageSection = loaded.db_storage.model_copy(
-        update={"options": {"data_dir": str(tmp_path)}}
-    )
-    common: NormalizationConfig = loaded.model_copy(update={"db_storage": db_storage})
 
     report: NormalizationReport = build_normalization(
         "jobup",
-        common,
+        NormalizationConfigReader.load_normalization(),
         NormalizationConfigReader.load_normalizer("fake"),
-        limits("--full"),
+        limits(),
     ).execute()
 
-    assert (report.normalized, report.is_test) == (1, False)
+    assert (report.normalized, report.is_test) == (1, True)
     (row,) = storage.read(Table.NORMALIZED_JOB, "jobup")
     assert [s["canonical"] for s in row["skills"]] == ["python", "dbt"]

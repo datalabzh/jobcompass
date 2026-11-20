@@ -2,22 +2,25 @@
 test_fake_normalization_uc.py
 
 Description : tests de la normalisation factice.
-Règles      : vrai stockage dans un dossier temporaire, alimenté avec des
-              ExtractedJob construits pour le test. Couvre : compétences déclarées et
-              détectées (casse, limites de mots, pas de doublon), signature du
+Règles      : vrai stockage (zone de test de Postgres, vidée avant chaque test),
+              alimenté avec des RawJobDetail construits pour le test. Couvre :
+              compétences déclarées (JSON-LD) et détectées (casse, limites de mots,
+              pas de doublon), payload en paragraphes, clé recopiée et signature du
               normaliseur, limite max_jobs, reprise (rien de normalisé deux fois),
-              un nouveau parseur qui donne un nouveau job à normaliser, la zone de
-              test.
+              une nouvelle version du scraper qui donne une nouvelle page à
+              normaliser.
 """
 
-from datetime import UTC, date, datetime
-from pathlib import Path
+import json
+from collections.abc import Iterator
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
 
 from catalog.tables import Table
-from contracts import ExtractedJob
+from contracts.components.field_types import PayloadFormat
+from contracts.jobs.raw_job_detail import RawJobDetail
 from normalization.fake.fake_normalization_uc import FakeNormalizationUseCase
 from normalization.interfaces.i_normalization_uc import NormalizationReport
 from storage.postgres_db_storage import PostgresDbStorage
@@ -26,35 +29,43 @@ NOW: datetime = datetime(2026, 11, 17, 15, 0, tzinfo=UTC)
 
 
 @pytest.fixture
-def storage(tmp_path: Path) -> PostgresDbStorage:
-    """A real storage for real runs, writing into the test's temporary folder."""
-    return PostgresDbStorage(is_test=True)  # rewritten at step 3
+def storage() -> Iterator[PostgresDbStorage]:
+    """The test zone of the real Postgres, emptied before the test."""
+    test: PostgresDbStorage = PostgresDbStorage(is_test=True)
+    test.clear_test_zone()
+    yield test
 
 
-def extracted(
+def detail(
     name: str,
     description: str = "",
-    declared_skills: list[str] | None = None,
-    parser_version: str = "1.0.0",
-    is_test: bool = False,
-) -> ExtractedJob:
-    """An extracted jobup job, identified by its name."""
-    return ExtractedJob(
+    skills: Any = None,  # noqa: ANN401
+    scraper_version: str = "0.1.0",
+    paragraphs: list[str] | None = None,
+) -> RawJobDetail:
+    """A jobup job detail page, identified by its name (one letter)."""
+    payload: Any = (
+        paragraphs
+        if paragraphs is not None
+        else {"@type": "JobPosting", "title": f"Job {name}", "description": description}
+        | ({"skills": skills} if skills is not None else {})
+    )
+    return RawJobDetail(
         source="jobup",
-        is_test=is_test,
+        is_test=True,
         url=f"https://www.jobup.ch/fr/emplois/detail/{name}/",
-        raw_hash=name[0] * 64,
-        parser="jobup_parser",
-        parser_version=parser_version,
-        parsed_at=NOW,
-        title=f"Job {name}",
-        company=None,
-        description=description,
-        date_posted=date(2026, 11, 17),
-        postal_code=None,
-        employment_types=[],
-        categories=[],
-        declared_skills=declared_skills or [],
+        hash_html_id=name * 64,
+        content_type="text/html",
+        fetched_at=NOW,
+        http_status=200,
+        scraper="jobup_extraction",
+        scraper_version=scraper_version,
+        payload_format=(
+            PayloadFormat.PARAGRAPHS
+            if paragraphs is not None
+            else PayloadFormat.JSON_LD
+        ),
+        payload=json.dumps(payload),
     )
 
 
@@ -82,12 +93,12 @@ def skills(storage: PostgresDbStorage) -> list[list[tuple[str, str, str]]]:
 def test_declared_and_detected_skills(storage: PostgresDbStorage) -> None:
     """Declared skills are kept; keywords are found whatever their case, once."""
     storage.append(
-        Table.EXTRACTED_JOB,
+        Table.RAW_JOB_DETAIL,
         [
-            extracted(
+            detail(
                 "a",
                 description="We use PYTHON, Postgres and Python again; Javascript.",
-                declared_skills=["Python", "Leadership"],
+                skills=["Python", "Leadership"],
             )
         ],
     )
@@ -104,11 +115,36 @@ def test_declared_and_detected_skills(storage: PostgresDbStorage) -> None:
     ]
 
 
+def test_declared_skills_as_text(storage: PostgresDbStorage) -> None:
+    """A skills key written as text is split on commas."""
+    storage.append(Table.RAW_JOB_DETAIL, [detail("a", skills="SQL, Scrum ,")])
+
+    normalization(storage).execute()
+
+    assert skills(storage) == [
+        [("SQL", "sql", "declared"), ("Scrum", "scrum", "declared")]
+    ]
+
+
+def test_paragraphs_payload(storage: PostgresDbStorage) -> None:
+    """Without JSON-LD, keywords are searched in the paragraphs; none declared."""
+    storage.append(
+        Table.RAW_JOB_DETAIL,
+        [detail("a", paragraphs=["Data Engineer", "Spark et Airflow."])],
+    )
+
+    normalization(storage).execute()
+
+    assert skills(storage) == [
+        [("Spark", "spark", "detected"), ("Airflow", "airflow", "detected")]
+    ]
+
+
 def test_whole_words_only(storage: PostgresDbStorage) -> None:
     """A keyword inside another word is not a skill (SAP in 'SAPEUR', git)."""
     storage.append(
-        Table.EXTRACTED_JOB,
-        [extracted("a", description="Sapeur digital, legitimate. Uses C# and .NET.")],
+        Table.RAW_JOB_DETAIL,
+        [detail("a", description="Sapeur digital, legitimate. Uses C# and .NET.")],
     )
 
     normalization(storage).execute()
@@ -116,55 +152,49 @@ def test_whole_words_only(storage: PostgresDbStorage) -> None:
     assert [canonical for _, canonical, _ in skills(storage)[0]] == ["c#", ".net"]
 
 
-def test_signature_recorded(storage: PostgresDbStorage) -> None:
-    """Each normalized job carries its input and the signature that made it."""
-    storage.append(Table.EXTRACTED_JOB, [extracted("a")])
+def test_key_copied_and_signature_recorded(storage: PostgresDbStorage) -> None:
+    """Each normalized job copies the key of its page and carries its signature."""
+    storage.append(Table.RAW_JOB_DETAIL, [detail("a")])
 
     normalization(storage).execute()
 
     (row,) = storage.read(Table.NORMALIZED_JOB, "jobup")
-    assert (row["raw_hash"], row["parser_version"]) == ("a" * 64, "1.0.0")
-    assert (row["normalizer"], row["model"]) == ("fake_normalization", "keyword_list")
+    assert (row["hash_html_id"], row["scraper"], row["scraper_version"]) == (
+        "a" * 64,
+        "jobup_extraction",
+        "0.1.0",
+    )
+    assert (row["normalizer"], row["normalizer_version"], row["model"]) == (
+        "fake_normalization",
+        "0.2.0",
+        "keyword_list",
+    )
     assert row["normalizer_description"].startswith("Fake skills")
+    assert row["is_test"]
 
 
 def test_max_jobs_then_resume(storage: PostgresDbStorage) -> None:
     """max_jobs limits a run; the next run only does what remains."""
-    storage.append(
-        Table.EXTRACTED_JOB, [extracted("a"), extracted("b"), extracted("c")]
-    )
+    storage.append(Table.RAW_JOB_DETAIL, [detail("a"), detail("b"), detail("c")])
 
     first: NormalizationReport = normalization(storage, max_jobs=2).execute()
     second: NormalizationReport = normalization(storage).execute()
+    third: NormalizationReport = normalization(storage).execute()
 
     assert (first.normalized, first.remaining) == (2, 1)
     assert (second.normalized, second.remaining) == (1, 0)
+    assert (third.normalized, third.remaining) == (0, 0)
     rows: list[dict[str, Any]] = storage.read(Table.NORMALIZED_JOB, "jobup")
-    assert sorted(row["raw_hash"][0] for row in rows) == ["a", "b", "c"]
+    assert sorted(row["hash_html_id"][0] for row in rows) == ["a", "b", "c"]
 
 
-def test_new_parser_version_normalized_again(storage: PostgresDbStorage) -> None:
-    """A page parsed by a new parser version is a new job to normalize."""
-    storage.append(Table.EXTRACTED_JOB, [extracted("a")])
+def test_new_scraper_version_normalized_again(storage: PostgresDbStorage) -> None:
+    """The same page extracted by a new scraper version is a new page to normalize."""
+    storage.append(Table.RAW_JOB_DETAIL, [detail("a")])
     normalization(storage).execute()
-    storage.append(Table.EXTRACTED_JOB, [extracted("a", parser_version="1.1.0")])
+    storage.append(Table.RAW_JOB_DETAIL, [detail("a", scraper_version="0.2.0")])
 
     report: NormalizationReport = normalization(storage).execute()
 
     assert report.normalized == 1
     assert len(storage.read(Table.NORMALIZED_JOB, "jobup")) == 2
-
-
-def test_test_run_reads_and_writes_apart(tmp_path: Path) -> None:
-    """A test run only sees test jobs, and writes in the test zone."""
-    real: PostgresDbStorage = PostgresDbStorage(is_test=False, data_dir=tmp_path)
-    test: PostgresDbStorage = PostgresDbStorage(is_test=True, data_dir=tmp_path)
-    real.append(Table.EXTRACTED_JOB, [extracted("a")])
-    test.append(Table.EXTRACTED_JOB, [extracted("b", is_test=True)])
-
-    normalization(test).execute()
-
-    assert real.read(Table.NORMALIZED_JOB, "jobup") == []
-    assert [row["is_test"] for row in test.read(Table.NORMALIZED_JOB, "jobup")] == [
-        True
-    ]

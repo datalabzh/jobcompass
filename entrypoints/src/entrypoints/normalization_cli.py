@@ -49,7 +49,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         dest="command", required=True
     )
     run: argparse.ArgumentParser = commands.add_parser(
-        "run", help="normalize the extracted jobs of a source"
+        "run", help="normalize the job detail pages of a source"
     )
     run.add_argument("source", help="source to normalize, e.g. jobup")
     run.add_argument(

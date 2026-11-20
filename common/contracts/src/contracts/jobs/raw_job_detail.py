@@ -5,9 +5,11 @@ Description : contrat d'une page de détail d'offre téléchargée avec succès,
               bloc de données brut.
 Règles      : produit par le scraper du site, au téléchargement ; consommé par le
               staging dbt (ADR-0002 : Python dépose le brut, dbt met en forme).
-              La page est stockée telle quelle, adressée par raw_hash : son chemin de
-              stockage se déduit du hash et ne fait volontairement pas partie du
+              La page est stockée telle quelle, adressée par hash_html_id : son chemin
+              de stockage se déduit du hash et ne fait volontairement pas partie du
               contrat.
+              Une ligne = une extraction d'une page par une version du scraper :
+              unique sur (hash_html_id, scraper, scraper_version).
               Les données de la liste sont absentes : elles sont dans RawJobInfo.
               payload = le bloc de données de la page, tel quel, toujours en texte
               JSON (vérifié) ; payload_format dit lequel :
@@ -39,11 +41,11 @@ from contracts.components.field_types import (
 class RawJobDetail(ContractModel):
     """One job detail page downloaded with success, with its raw data block."""
 
-    schema_version: Literal["2.0"] = "2.0"
+    schema_version: Literal["3.0"] = "3.0"
     source: SourceSlug
     is_test: bool = Field(description="True if written by a test run (limited)")
     url: JobUrl
-    raw_hash: Sha256Hash
+    hash_html_id: Sha256Hash
     content_type: str = Field(description="Content-Type of the answer")
     fetched_at: AwareDatetime
     http_status: int = Field(ge=200, le=299)
