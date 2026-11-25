@@ -19,12 +19,14 @@ Règles      : entrée = raw_job_detail ; le payload est analysé ici, selon son
               Pages à normaliser = lignes de raw_job_detail - déjà normalisées par
               cette classe (mêmes noms et versions), de la plus ancienne à la plus
               récente ; au plus max_jobs, une par une, chacune écrite dès qu'elle est
-              traitée.
+              traitée. Une page illisible (payload inattendu) est journalisée,
+              comptée dans failed et sautée, sans arrêter le passage.
               Changer la liste ou la détection = monter model_version ; changer
               l'entrée ou la sortie = monter normalizer_version (et config.normalizer).
               Réglages : fake/normalizer.toml.
 """
 
+import logging
 import re
 from typing import Any
 
@@ -73,6 +75,7 @@ PATTERNS: dict[str, re.Pattern[str]] = {
     canonical: re.compile(rf"(?<![\w.#+])(?:{pattern})(?![\w#+])", re.IGNORECASE)
     for canonical, pattern in KEYWORDS.items()
 }
+LOGGER: logging.Logger = logging.getLogger(__name__)
 SIGNATURE_COLUMNS: list[str] = [
     "hash_html_id",
     "scraper",
@@ -108,14 +111,27 @@ class FakeNormalizationUseCase(INormalizationUseCase):
         """Normalize the pending job detail pages one by one."""
         pending: list[dict[str, Any]] = self._pending_details()
         selected: list[dict[str, Any]] = pending[: self.max_jobs]
+        failed: int = 0
         for detail in selected:
-            self.db_storage.append(Table.NORMALIZED_JOB, [self._normalize(detail)])
+            try:
+                job: NormalizedJob = self._normalize(detail)
+            except (AttributeError, KeyError, TypeError, ValueError) as error:
+                LOGGER.warning(
+                    "page %s skipped: %s: %s",
+                    detail["hash_html_id"],
+                    type(error).__name__,
+                    error,
+                )
+                failed += 1
+                continue
+            self.db_storage.append(Table.NORMALIZED_JOB, [job])
         return NormalizationReport(
             source=self.source,
             is_test=self.is_test,
             max_jobs=self.max_jobs,
-            normalized=len(selected),
+            normalized=len(selected) - failed,
             remaining=len(pending) - len(selected),
+            failed=failed,
         )
 
     def _pending_details(self) -> list[dict[str, Any]]:

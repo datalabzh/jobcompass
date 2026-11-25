@@ -14,13 +14,16 @@ Règles      : jobcompass-normalization run <source> [--normalizer NOM] [--max-j
               Limites : voir run_limits.py (sans option = test limité par le
               normalizer.toml ; un test ne lit et n'écrit que la zone de test).
               La dernière ligne affichée est le rapport JSON (lu par Dagster).
-              Code de sortie 0 ; 2 si la configuration ou les options sont
-              incorrectes (ex. normaliseur inconnu).
+              Code de sortie 0 (les pages illisibles sont comptées dans failed du
+              rapport, sans arrêter le passage) ; 2 si la configuration ou les
+              options sont incorrectes (ex. normaliseur inconnu) ; 3 si une erreur
+              imprévue a arrêté la normalisation (base injoignable...).
 """
 
 import argparse
 import dataclasses
 import json
+import logging
 import sys
 from datetime import UTC, datetime
 from functools import partial
@@ -38,6 +41,7 @@ from normalization.interfaces.i_normalization_uc import (
 )
 
 LIMITS: list[str] = ["max_jobs"]
+UNEXPECTED_ERROR: int = 3  # exit code of a run stopped by an unexpected error
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -88,9 +92,13 @@ def main(argv: list[str] | None = None) -> int:
     except (ConfigError, ValueError) as error:
         print(f"jobcompass-normalization: error: {error}", file=sys.stderr)
         return 2
-    report: NormalizationReport = build_normalization(
-        args.source, common, normalizer, limits
-    ).execute()
+    try:
+        report: NormalizationReport = build_normalization(
+            args.source, common, normalizer, limits
+        ).execute()
+    except Exception:
+        logging.exception("jobcompass-normalization: unexpected error, run stopped")
+        return UNEXPECTED_ERROR
     print(json.dumps(dataclasses.asdict(report)))
     return 0
 

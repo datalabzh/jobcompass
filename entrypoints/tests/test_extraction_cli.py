@@ -4,13 +4,16 @@ test_extraction_cli.py
 Description : tests des options du point d'entrée de l'extraction.
 Règles      : sans option, les limites de site.toml s'appliquent (test) ;
               --max-pages / --max-jobs les remplacent (toujours un test) ; --full
-              lève toutes les limites (vrai passage) et refuse d'être combiné.
+              lève toutes les limites (vrai passage) et refuse d'être combiné ;
+              une erreur imprévue arrête la commande en code 3, distinct du code 1
+              d'une catégorie en échec.
 """
 
 import argparse
 
 import pytest
 
+from entrypoints import extraction_cli
 from entrypoints.extraction_cli import main, parse_args
 from entrypoints.run_limits import RunLimits, resolve_limits
 
@@ -46,3 +49,19 @@ def test_full_with_a_limit_refused() -> None:
     with pytest.raises(ValueError, match="--full"):
         limits("--full", "--max-pages", "3")
     assert main(["run", "jobup", "--full", "--max-pages", "3"]) == 2
+
+
+def test_unexpected_error_is_code_3(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An unexpected error stops the run with code 3, not 1 (a failed category)."""
+
+    class BrokenExtractionUseCase:
+        """An extraction stopped by an unexpected error."""
+
+        def execute(self) -> None:
+            """Fail like an unreachable storage."""
+            raise ConnectionError("storage unreachable")
+
+    monkeypatch.setattr(
+        extraction_cli, "build_extraction", lambda *args: BrokenExtractionUseCase()
+    )
+    assert main(["run", "jobup"]) == 3

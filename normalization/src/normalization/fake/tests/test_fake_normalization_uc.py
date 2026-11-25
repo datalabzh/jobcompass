@@ -8,7 +8,7 @@ Règles      : vrai stockage (zone de test de Postgres, vidée avant chaque test
               pas de doublon), payload en paragraphes, clé recopiée et signature du
               normaliseur, limite max_jobs, reprise (rien de normalisé deux fois),
               une nouvelle version du scraper qui donne une nouvelle page à
-              normaliser.
+              normaliser, une page illisible sautée sans bloquer les suivantes.
 """
 
 import json
@@ -198,3 +198,27 @@ def test_new_scraper_version_normalized_again(storage: PostgresDbStorage) -> Non
 
     assert report.normalized == 1
     assert len(storage.read(Table.NORMALIZED_JOB, "jobup")) == 2
+
+
+def test_unreadable_page_skipped(storage: PostgresDbStorage) -> None:
+    """A page that cannot be normalized is skipped and counted; the next is done."""
+    unreadable: RawJobDetail = RawJobDetail(
+        source="jobup",
+        is_test=True,
+        url="https://www.jobup.ch/fr/emplois/detail/a/",
+        hash_html_id="a" * 64,
+        content_type="text/html",
+        fetched_at=NOW,
+        http_status=200,
+        scraper="jobup_extraction",
+        scraper_version="0.1.0",
+        payload_format=PayloadFormat.JSON_LD,
+        payload=json.dumps([{"@type": "JobPosting", "title": "Job a"}]),  # a list
+    )
+    storage.append(Table.RAW_JOB_DETAIL, [unreadable, detail("b")])
+
+    report: NormalizationReport = normalization(storage).execute()
+
+    assert (report.normalized, report.failed, report.remaining) == (1, 1, 0)
+    rows: list[dict[str, Any]] = storage.read(Table.NORMALIZED_JOB, "jobup")
+    assert [row["hash_html_id"][0] for row in rows] == ["b"]

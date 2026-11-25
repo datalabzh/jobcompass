@@ -6,7 +6,8 @@ Règles      : le normaliseur par défaut est utilisé sans --normalizer ; un
               normaliseur inconnu arrête la commande ; sans option, la limite du
               normalizer.toml s'applique (test) ; --full la lève et refuse d'être
               combiné ; un passage de test normalise les pages de la zone de test
-              (vrai Postgres, zone de test vidée avant).
+              (vrai Postgres, zone de test vidée avant) ; une erreur imprévue
+              arrête la commande en code 3.
 """
 
 import json
@@ -17,6 +18,7 @@ import pytest
 from catalog.tables import Table
 from contracts.components.field_types import PayloadFormat
 from contracts.jobs.raw_job_detail import RawJobDetail
+from entrypoints import normalization_cli
 from entrypoints.config.normalization_config import NormalizationConfigReader
 from entrypoints.normalization_cli import build_normalization, main, parse_args
 from entrypoints.run_limits import RunLimits, resolve_limits
@@ -84,3 +86,21 @@ def test_test_run_normalizes() -> None:
     assert (report.normalized, report.is_test) == (1, True)
     (row,) = storage.read(Table.NORMALIZED_JOB, "jobup")
     assert [s["canonical"] for s in row["skills"]] == ["python", "dbt"]
+
+
+def test_unexpected_error_is_code_3(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An unexpected error stops the run with code 3."""
+
+    class BrokenNormalizationUseCase:
+        """A normalization stopped by an unexpected error."""
+
+        def execute(self) -> None:
+            """Fail like an unreachable database."""
+            raise ConnectionError("database unreachable")
+
+    monkeypatch.setattr(
+        normalization_cli,
+        "build_normalization",
+        lambda *args: BrokenNormalizationUseCase(),
+    )
+    assert main(["run", "jobup"]) == 3

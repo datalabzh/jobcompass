@@ -12,7 +12,10 @@ Règles      : commune à tous les sites : lit la table raw_job_detail d'une sou
               (None = sans limite), now.
               Pages à normaliser = lignes de raw_job_detail - déjà normalisées par
               ce normaliseur, ce modèle et leurs versions ; traitées et écrites une
-              par une.
+              par une. Une page qui ne peut pas être normalisée est journalisée,
+              comptée dans failed et sautée : elle n'arrête pas le passage (sinon,
+              traitée la première à chaque passage, elle bloquerait toutes les
+              suivantes) ; elle est retentée au passage suivant.
               Chaque NormalizedJob porte la signature du normaliseur et du modèle
               (noms, versions et description en une phrase), déclarée par la
               classe : un nouveau normaliseur ou modèle ajoute des lignes, les
@@ -50,6 +53,7 @@ class NormalizationReport:
     max_jobs: int | None
     normalized: int  # jobs written to normalized_job
     remaining: int  # jobs still to normalize after this run (max_jobs reached)
+    failed: int = 0  # jobs skipped: could not be normalized (logged), retried later
 
 
 class INormalizationUseCase(IUseCase):

@@ -11,8 +11,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    # Ports publiés sur la machine seulement (127.0.0.1) : ni la base ni le
+    # stockage ne sont joignables depuis le réseau. Le service pipeline passe par
+    # le réseau Docker. Accès depuis un autre poste : tunnel SSH.
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Scripts SQL exécutés au premier démarrage (volume vide) uniquement.
@@ -33,8 +36,8 @@ services:
       RUSTFS_SECRET_KEY: ${S3_SECRET_KEY}
       RUSTFS_CONSOLE_ENABLE: "true"
     ports:
-      - "${S3_API_PORT:-9000}:9000"
-      - "${S3_CONSOLE_PORT:-9001}:9001"
+      - "127.0.0.1:${S3_API_PORT:-9000}:9000"
+      - "127.0.0.1:${S3_CONSOLE_PORT:-9001}:9001"
     volumes:
       - rustfs_data:/data
 
@@ -81,8 +84,11 @@ services:
         condition: service_completed_successfully
     # Connexions lues dans infra/.env ; dans le réseau Docker, on joint les
     # conteneurs par leur nom et leur port interne (pas les ports publiés).
+    # Réglages de l'extraction : extraction/.env, facultatif.
     env_file:
       - .env
+      - path: ../extraction/.env
+        required: false
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"

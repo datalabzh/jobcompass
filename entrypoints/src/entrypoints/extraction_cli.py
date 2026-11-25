@@ -10,11 +10,15 @@ Règles      : jobcompass-extraction run <site> [--max-pages N] [--max-jobs N]
               extraction/<site>/site.toml, lu par SiteConfigReader. Tout le processus
               appartient au site.
               Limites : voir run_limits.py (sans option = test limité par site.toml).
-              Réglages communs à tous les sites : variables EXTRACTION_* (ou .env).
+              Réglages communs à tous les sites : ExtractionSettings, variables
+              EXTRACTION_* ou extraction/.env (voir extraction/settings.py).
               user_agent identifie JobCompass auprès des sites : y mettre un contact.
               La dernière ligne affichée est le rapport JSON (lu par Dagster).
               Code de sortie 0 si completed, 1 si une catégorie a échoué, 2 si la
-              configuration ou les options sont incorrectes.
+              configuration ou les options sont incorrectes, 3 si une erreur
+              imprévue a arrêté l'extraction (stockage injoignable...) : le code 1
+              reste réservé à l'échec d'une catégorie, que l'orchestration
+              distingue d'un arrêt.
 """
 
 import argparse
@@ -26,8 +30,7 @@ from datetime import UTC, datetime
 from functools import partial
 from typing import Any
 
-from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseModel
 
 from contracts.components.field_types import RunStatus
 from entrypoints.config.config_reader import (
@@ -43,21 +46,10 @@ from extraction.interfaces.i_site_extraction_uc import (
     ExtractionReport,
     ISiteExtractionUseCase,
 )
+from extraction.settings import ExtractionSettings
 
 LIMITS: list[str] = ["max_pages", "max_jobs"]
-
-
-class ExtractionSettings(BaseSettings):
-    """Settings common to every site, from EXTRACTION_* variables or defaults."""
-
-    model_config = SettingsConfigDict(
-        env_prefix="EXTRACTION_", env_file=".env", extra="ignore"
-    )
-
-    user_agent: str = "JobCompass/0.1 (job market research)"
-    http_timeout: float = Field(default=30.0, gt=0)
-    max_failures: int = Field(default=3, ge=1)
-    log_level: str = "INFO"
+UNEXPECTED_ERROR: int = 3  # exit code of a run stopped by an unexpected error
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -122,9 +114,13 @@ def main(argv: list[str] | None = None) -> int:
     except (ConfigError, ValueError) as error:
         print(f"jobcompass-extraction: error: {error}", file=sys.stderr)
         return 2
-    report: ExtractionReport = build_extraction(
-        args.site, config, limits, settings
-    ).execute()
+    try:
+        report: ExtractionReport = build_extraction(
+            args.site, config, limits, settings
+        ).execute()
+    except Exception:
+        logging.exception("jobcompass-extraction: unexpected error, run stopped")
+        return UNEXPECTED_ERROR
     print(json.dumps(dataclasses.asdict(report), default=to_json))
     return 0 if report.status == RunStatus.COMPLETED else 1
 
