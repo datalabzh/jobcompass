@@ -19,7 +19,8 @@ dbt build : staging (vues) → intermediate (vues) → marts (tables)
   stg_normalization__normalized_jobs + stg_config__normalizers                      │
       ─► int_skills__normalized_skills_unnested ────────────────────────────────────┴─► marts.skills__job_skills
 ```
-Orchestration : lancement manuel pour l'instant ; Dagster prévu dans `orchestration/` (vide).
+Orchestration : lancement manuel ; un cron qui enchaîne les 3 commandes quand la collecte réelle démarrera
+(Dagster seulement si un besoin réel apparaît ; `orchestration/` vide).
 
 ## Objets
 | Objet | Type | Rôle en 1 ligne | Écrit par |
@@ -33,8 +34,8 @@ Orchestration : lancement manuel pour l'instant ; Dagster prévu dans `orchestra
 | RustFS `jobcompass-raw` | Objet S3 | HTML brut immuable, nommé par `hash_html_id` | extraction |
 | JobupExtractionUseCase | Classe | Extraction jobup (job infos puis job details), réglée par `site.toml` | — |
 | FakeNormalizationUseCase | Classe | Normaliseur factice (déclarées + ~30 mots-clés), courant par défaut | — |
-| marts.jobs__job_offers | Table dbt | Une ligne par offre : présence, `is_active`, dernière page de détail | dbt |
-| marts.skills__job_skills | Table dbt | Une ligne par offre et compétence canonique, jours où l'offre est vue | dbt |
+| marts.jobs__job_offers | Table dbt | Une ligne par offre : présence, `is_active`, dernière fiche, `hash_html_id` | dbt |
+| marts.skills__job_skills | Table dbt | Une ligne par offre et compétence canonique, jours vus, `hash_html_id` | dbt |
 
 Bases : `jobcompass` (target `real`) et `jobcompass_dev` (target `dev`, zone de test), mêmes schémas.
 
@@ -46,15 +47,18 @@ Bases : `jobcompass` (target `real`) et `jobcompass_dev` (target `dev`, zone de 
 - 2026-11-19 : un seul hash en Python (`hash_html_id`), les autres `hash_<objet>_id` calculés en staging dbt.
 - 2026-11-19 : normaliseur courant désigné dans `config.normalizer`, pas dans une variable dbt.
 - 2026-11-20 : zone de test = base séparée `jobcompass_dev` ; titre/entreprise/date pris du JSON-LD, sinon de la carte.
+- 2026-11-25 : cron plutôt que Dagster — 3 commandes à la suite, état dans les tables ; l'équipe n'attend pas Dagster.
+- 2026-11-25 : `hash_html_id` dans les marts — remonter d'une ligne d'analyse au HTML d'origine (traçabilité).
 
 ## Où on en est
 - ✅ Fait : infra Docker (Postgres 17 + RustFS), extraction jobup et normalisation factice vers Postgres,
-  modèles dbt staging → marts.
-- 🔧 En cours : livraison de la chaîne extraction → normalisation → dbt (jeudi 26/11) — *à confirmer*.
-- ⏭️ Prochaine étape : *à confirmer* (Dagster ? README ?).
+  modèles dbt staging → marts, deux bases test / production (étape 5), `hash_html_id` dans les marts, README.
+  Chaîne validée de bout en bout sur la base de test.
+- 🔧 En cours : documentation `docs/` (ADR-0002 à mettre à jour, ADR 0003 à 0007 à rédiger, fil rouge).
+- ⏭️ Prochaine étape : livraison (jeudi 26/11) ; plus tard, script + cron pour la collecte réelle.
 
-Note : `CLAUDE.md` (DuckDB/Parquet) est périmé et n'est plus utilisé — le travail se fait dans Claude Chat ;
-référence = ce fichier + le cadre du projet Claude.
+Note : `CLAUDE.md` ne fait plus que renvoyer ici — le travail se fait dans Claude Chat ;
+référence = ce fichier + le cadre du projet Claude + le README.
 
 ## Questions fréquentes des équipes
 - Comment savoir si une offre est encore active ? → `is_active` = vue dans le dernier run **terminé** d'une de ses
@@ -65,4 +69,6 @@ référence = ce fichier + le cadre du projet Claude.
   rapport JSON en fin de commande.
 - Comment changer de normaliseur ? → nouveau dossier dans `normalization/`, puis désigner le courant dans
   `config.normalizer` (une transaction) ; dbt ne lit que le courant.
-- Comment lancer un vrai passage ? → `--full` ; sans option, c'est un test (`is_test`, limité par `site.toml`).
+- Comment lancer un vrai passage ? → `--full` (base de production `jobcompass`) ; sans option, c'est un test
+  dans `jobcompass_dev` (1 page, 2 fiches pour jobup).
+- Comment retrouver le HTML d'une offre ? → `hash_html_id` dans les marts = nom du fichier dans RustFS.
