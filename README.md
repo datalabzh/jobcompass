@@ -112,6 +112,28 @@ uv run --env-file infra/.env --package jobcompass-dbt dbt build --project-dir db
 Les options ne s'affichent qu'avec `run --help` (ex. `jobcompass-extraction run --help`). Pour la normalisation,
 `--normalizer <dossier>` choisit un autre normaliseur que celui par défaut (`normalization.toml`).
 
+## Planification
+
+La chaîne peut tourner seule, chaque jour, dans le conteneur `pipeline` : supercronic y lance
+`orchestration/run_pipeline.sh` (extraction, normalisation, puis dbt) à l'heure fixée dans
+`orchestration/jobcompass.cron`. Le conteneur démarre avec les autres :
+
+```bash
+docker compose -f infra/docker-compose.yml up -d --build --wait
+docker compose -f infra/docker-compose.yml logs -f pipeline     # suivre les passages
+```
+
+| Pour… | Modifier | Puis |
+|---|---|---|
+| changer l'heure | la ligne de `orchestration/jobcompass.cron` (heure de Zurich) | `docker compose -f infra/docker-compose.yml restart pipeline` |
+| passer en production | `PIPELINE_MODE=full` dans `orchestration/.env` (modèle : `.env.example`) | idem |
+| prendre en compte une modification du code Python ou dbt | — | `docker compose -f infra/docker-compose.yml up -d --build pipeline` |
+
+Par défaut (`PIPELINE_MODE=test`), un passage planifié va en test, comme les commandes à la main.
+Le script se lance aussi à la main : `./orchestration/run_pipeline.sh` (ou
+`PIPELINE_MODE=full ./orchestration/run_pipeline.sh`). Si une catégorie échoue à l'extraction, la
+normalisation et dbt tournent quand même, et le passage finit en échec (code 1).
+
 ## Test ou production
 
 Postgres contient **deux bases**, avec exactement les mêmes tables :

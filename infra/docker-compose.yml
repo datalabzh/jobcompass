@@ -62,6 +62,36 @@ services:
         echo "Bucket $$S3_BUCKET prêt."
     restart: "no"
 
+  # Chaîne JobCompass planifiée par supercronic (image : orchestration/Dockerfile).
+  # orchestration/ est monté en volume : après un changement de l'heure
+  # (jobcompass.cron) ou du mode (orchestration/.env), il suffit de
+  #   docker compose -f infra/docker-compose.yml restart pipeline
+  # Après un changement du code Python ou dbt : reconstruire l'image avec
+  #   docker compose -f infra/docker-compose.yml up -d --build pipeline
+  pipeline:
+    build:
+      context: ..
+      dockerfile: orchestration/Dockerfile
+    image: jobcompass-pipeline
+    container_name: jobcompass-pipeline
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rustfs-init:
+        condition: service_completed_successfully
+    # Connexions lues dans infra/.env ; dans le réseau Docker, on joint les
+    # conteneurs par leur nom et leur port interne (pas les ports publiés).
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      S3_HOST: rustfs
+      S3_API_PORT: "9000"
+    volumes:
+      - ../orchestration:/app/orchestration:ro
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   rustfs_data:

@@ -2,6 +2,14 @@
 
 Les entrées les plus récentes en haut. 3 à 5 lignes par session.
 
+## 2026-11-25 (nuit)
+- Fait : planification de la chaîne — `orchestration/run_pipeline.sh`, `jobcompass.cron`, `Dockerfile` (+ son
+  `.dockerignore`), `.env.example`, service `pipeline` dans le docker-compose ; testé à la main puis toutes les minutes.
+- Pourquoi : que le projet tourne seul après un `docker compose up`, sur n'importe quelle machine de l'équipe.
+- Décision : supercronic (plutôt que Dagster, une librairie Python ou un cron sur la machine) ; chaque dossier
+  garde ses variables ; si une catégorie échoue, on continue (is_active ignore les passages en échec).
+- Reste à faire : variables d'extraction dans \extraction\`.`
+
 ## 2026-11-25 (soir)
 - Fait : étape 5 validée et commitée (deux bases, scripts `infra/postgres/` enfin versionnés) ; `data/` supprimé ;
   `hash_html_id` ajouté aux marts `jobs__job_offers` et `skills__job_skills` ; README écrit (processus, stockage,

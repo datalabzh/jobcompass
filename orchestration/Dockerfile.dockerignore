@@ -1,0 +1,23 @@
+# Fichiers exclus de l'image pipeline (lu par Docker car placé à côté de
+# orchestration/Dockerfile ; contexte = racine du dépôt).
+
+# Secrets : jamais dans l'image, les variables viennent de docker compose
+**/.env
+
+# Environnements et caches locaux : reconstruits dans l'image
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+.cache
+
+# Sorties générées
+dbt/target
+dbt/dbt_packages
+**/logs
+site
+
+# Outils de développement
+.git
+.vscode
+jobcompass.session.sql

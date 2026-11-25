@@ -1,0 +1,11 @@
+# Planification de la chaîne JobCompass, lue par supercronic dans le conteneur
+# pipeline (voir orchestration/Dockerfile et infra/docker-compose.yml).
+#
+# Pour changer l'heure : modifier la ligne ci-dessous, puis
+#   docker compose -f infra/docker-compose.yml restart pipeline
+# Heure locale (TZ=Europe/Zurich dans le conteneur), pas UTC.
+# Format : minute heure jour-du-mois mois jour-de-la-semaine commande
+# Exemples : "0 6 * * *" tous les jours à 6 h ; "0 6 * * 1-5" du lundi au vendredi.
+# Le mode (test ou full) se règle dans orchestration/.env, pas ici.
+
+0 6 * * * /app/orchestration/run_pipeline.sh
