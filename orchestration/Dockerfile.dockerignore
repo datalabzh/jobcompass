@@ -15,7 +15,7 @@
 dbt/target
 dbt/dbt_packages
 **/logs
-site
+documentation/site
 
 # Outils de développement
 .git

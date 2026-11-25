@@ -71,7 +71,8 @@ dépendances. Les briques ne s'appellent pas entre elles : chacune lit ce que la
 | `storage/` | Écriture dans Postgres et dans RustFS |
 | `common/` | Contrats de données (Pydantic), noms des tables, interfaces communes |
 | `infra/` | Postgres et RustFS en conteneurs Docker |
-| `docs/` | Documentation : décisions d'architecture, conventions |
+| `orchestration/` | Planification : script de la chaîne, heure (cron), image du conteneur `pipeline` |
+| `documentation/` | Documentation : décisions d'architecture, conventions (sources dans `docs/`) |
 | `suivi/` | Suivi du projet : carte du projet, journal de bord |
 
 ## Prérequis
@@ -222,15 +223,17 @@ Les tests dbt sont lancés par `dbt build` (voir « Lancer la chaîne »).
 
 ## Documentation
 
-La documentation (décisions d'architecture, conventions dbt) est dans `docs/`, publiée avec
+La documentation (décisions d'architecture, conventions dbt) est dans `documentation/` : les pages dans
+`documentation/docs/`, la configuration dans `documentation/zensical.toml`. Elle est publiée avec
 [Zensical](https://zensical.org), installé par `uv sync --all-packages` (groupe de dépendances `dev`).
 Pour la consulter, depuis la racine du dépôt :
 
 ```bash
-uv run zensical serve      # aperçu sur http://localhost:8000, rechargé à chaque modification
+uv run zensical serve -f documentation/zensical.toml   # aperçu sur http://localhost:8000
 ```
 
-Pour générer le site statique dans `site/` (non versionné) : `uv run zensical build`.
+Pour générer le site statique dans `documentation/site/` (non versionné) :
+`uv run zensical build -f documentation/zensical.toml`.
 
 Le suivi du projet est dans `suivi/` : `suivi/PROJECT_MAP.md` (carte du projet) et `suivi/DEVLOG.md` (journal de
 bord).

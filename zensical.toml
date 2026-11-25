@@ -1,8 +1,0 @@
-# Configuration de la documentation JobCompass (Zensical).
-# Sources Markdown dans docs/ ; site généré dans site/ (ignoré par git).
-#   uv run zensical serve   -> aperçu local sur http://localhost:8000
-#   uv run zensical build   -> site statique dans site/
-
-[project]
-site_name = "JobCompass"
-site_description = "Analyse du marché de l'emploi en Suisse romande par clusters de compétences"

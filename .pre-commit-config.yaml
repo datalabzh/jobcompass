@@ -1,4 +1,4 @@
-# Contrôles avant chaque commit (docs/conventions/dbt.md, partie 9).
+# Contrôles avant chaque commit (documentation/docs/conventions/dbt.md).
 # Installation : uv run pre-commit install
 # Tout le projet : uv run pre-commit run --all-files
 # Correction SQL : uv run pre-commit run sqlfluff-fix --all-files --hook-stage manual

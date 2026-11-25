@@ -62,7 +62,7 @@ Bases : `jobcompass` (target `real`) et `jobcompass_dev` (target `dev`, zone de 
   modèles dbt staging → marts, deux bases test / production (étape 5), `hash_html_id` dans les marts, README, 
   planification (conteneur pipeline + supercronic), testée de bout en bout.
   Chaîne validée de bout en bout sur la base de test.
-- 🔧 En cours : documentation `docs/` (ADR-0002 à mettre à jour, ADR 0003 à 0007 à rédiger, fil rouge).
+- 🔧 En cours : documentation `documentation/docs/` (ADR-0002 à mettre à jour, ADR 0003 à 0007 à rédiger, fil rouge).
 - ⏭️ Prochaine étape : livraison (jeudi 26/11). Ensuite : variables `EXTRACTION_*` lues dans `extraction/.env`
   (aujourd'hui `.env` à la racine, inexistant) ; passer `PIPELINE_MODE=full` sur la machine de production.
 

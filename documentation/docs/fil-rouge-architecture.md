@@ -6,15 +6,15 @@
 Règle : chaque question se clôt par une décision courte (ADR : contexte, décision, alternatives écartées,
 conséquences). Statut : ☐ à traiter · ◐ en cours · ☑ décidé (avec lien vers l'ADR).
 Les décisions de processus (commits, organisation du travail) sont consignées ici, sans ADR.
-**Les ADR vivent dans le dépôt** : `docs/adr/NNNN-titre.md`, documentation publiée avec Zensical
-(`zensical.toml` à la racine, `uv run zensical serve`).
+**Les ADR vivent dans le dépôt** : `documentation/docs/adr/NNNN-titre.md`, documentation publiée avec Zensical
+(`documentation/zensical.toml`, `uv run zensical serve -f documentation/zensical.toml`).
 
 **Principes directeurs (posés par David le 18/11, critères de chaque décision)** :
 1. **Simple et explicite** : peu d'implicite (pas de configuration ou d'état « magiques »), pas de milliers de
    fichiers éparpillés.
 2. **Architecture en briques** permettant de travailler en collaboration, en parallèle, sur différents crawlers
    et différentes transformations.
-3. **ELT simple, peu d'outils** (posé par David le 18/11 après-midi) → **ADR-0002** (`docs/adr/0002-elt-brut-minimal-dbt.md`).
+3. **ELT simple, peu d'outils** (posé par David le 18/11 après-midi) → **ADR-0002** (`documentation/docs/adr/0002-elt-brut-minimal-dbt.md`).
    Python collecte et dépose la donnée **telle quelle** ; toute mise en forme se fait dans **dbt** (dbt-duckdb sur
    les Parquet, un staging par table brute, puis silver et gold). Python ne met jamais les données en forme pour
    des tables futures. Outils : Python, DuckDB, dbt ; tout autre outil demande un besoin concret.
@@ -46,7 +46,7 @@ Les décisions de processus (commits, organisation du travail) sont consignées 
 - Contradiction à lever : A2 (aucune extraction réelle en développement) empêche de valider les clusters ;
   une collecte réelle ponctuelle sera nécessaire, après F3 (cadre juridique).
 - F4 reste valable (date-heure UTC) ; son ADR reste à rédiger.
-- `docs/adr/index.md` indique ADR-0001 « Proposé » alors que le fil rouge le dit accepté : à trancher
+- `documentation/docs/adr/index.md` indique ADR-0001 « Proposé » alors que le fil rouge le dit accepté : à trancher
   (points à lever : lecture du `robots.txt` de jobs.ch).
 - `cadre-projet.md` est en retard sur le code : `interfaces/` découpé en `infrastructure/` et `use_cases/`,
   `site_config.py` et `normalization_config.py` fusionnés dans `entrypoints/config.py`, un dossier par
@@ -62,7 +62,7 @@ Les décisions de processus (commits, organisation du travail) sont consignées 
 |---|---|---|---|
 | A1 | ☑ | Beaucoup de changements non commités depuis le 17/11. | Commits par thème (Conventional Commits) : lesquels, dans quel ordre ? → **Décidé le 17/11** : un seul commit `feat: parsing, normalization brick and Log* contracts` (état intermédiaire sur lequel on ne reviendra pas). Désormais : un commit par décision, au moment où on la prend. Pas d'ADR (processus). |
 | A2 | ☑ | Les offres disparaissent : chaque jour sans passage complet réel est un historique perdu à jamais, alors que l'objectif n° 1 (évolution des clusters dans le temps) en dépend. | Comment lancer dès maintenant un passage complet quotidien, avec l'architecture actuelle (cron, Dagster minimal) ? Où stocker les vraies données ? → **Décidé le 18/11** : aucune extraction réelle tant que le projet est en développement ; l'historique antérieur au premier passage réel est accepté comme perdu. Options écartées : passage quotidien avec le code actuel, sitemap seul. Pas d'ADR (priorité de projet). |
-| A3 | ☑ | Une catégorie, ~800 offres : probablement trop peu pour des clusters stables par période. | Quel périmètre de collecte : toutes les catégories jobup ? d'autres portails ? dans quel ordre ? → **ADR-0001 (Accepté le 18/11)** : `docs/adr/0001-perimetre-collecte.md`. Le `robots.txt` et les CGU de jobs.ch seront lus avant d'en développer le scraper. |
+| A3 | ☑ | Une catégorie, ~800 offres : probablement trop peu pour des clusters stables par période. | Quel périmètre de collecte : toutes les catégories jobup ? d'autres portails ? dans quel ordre ? → **ADR-0001 (Accepté le 18/11)** : `documentation/docs/adr/0001-perimetre-collecte.md`. Le `robots.txt` et les CGU de jobs.ch seront lus avant d'en développer le scraper. |
 | A4 | ☐ | `ExtractedJob` a été défini sans ses consommateurs. Bonne pratique : contrats pilotés par le consommateur. | Les data scientists existent-ils déjà ? Leur poser : description complète ou sections séparées (missions, profil) ? langue ? HTML brut ? quel historique ? quelle granularité de période ? quelle fraîcheur ? (18/11 : avec le principe 3, leurs réponses façonnent les modèles silver/gold de dbt, plus la collecte.) |
 | A5 | ☑ | Sans consommateur identifié, investir dans le parsing est risqué. | En attendant leurs réponses : garder le brut complet (déjà fait) et limiter l'investissement dans le parsing ? → **ADR-0002 (18/11)** : le parsing se limite à sortir le bloc brut (JSON-LD, sinon paragraphes du HTML) ; tout le reste dans dbt. |
 
@@ -121,5 +121,5 @@ Les décisions de processus (commits, organisation du travail) sont consignées 
 |---|---|---|---|
 | G1 | ☐ | Objection : « si on change d'outil, tout le projet est à revoir ». Réponse : la protection, ce sont les contrats ; l'enfermement vient de la logique métier écrite *dans* l'outil. | Adopter la règle « un outil est autorisé dans sa brique, jamais dans les contrats ni la logique métier » ? |
 | G2 | ☐ | Objection : « classes natives pour rester agnostique ». Réponse : l'équipe hérite d'un framework maison sans documentation ni communauté ; un outil connu se transmet souvent mieux. | Pour chaque sujet : l'outil retire-t-il plus de complexité qu'il n'en ajoute ? |
-| G3 | ◐ | Nomenclature qui a beaucoup changé en trois jours ; le cadrage mélange décisions et description. | Figer la nomenclature ; tenir les ADR à part du cadrage ? → **ADR à part : décidé le 18/11** (`docs/adr/`, Zensical). Nomenclature : à figer. |
+| G3 | ◐ | Nomenclature qui a beaucoup changé en trois jours ; le cadrage mélange décisions et description. | Figer la nomenclature ; tenir les ADR à part du cadrage ? → **ADR à part : décidé le 18/11** (`documentation/docs/adr/`, Zensical). Nomenclature : à figer. |
 | G4 | ☑ | Principes directeurs posés par David le 18/11. | Simple et explicite (peu d'implicite, pas de fichiers éparpillés) ; briques permettant le travail en parallèle sur crawlers et transformations. Voir en tête du document. |
