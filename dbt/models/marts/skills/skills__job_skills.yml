@@ -22,6 +22,14 @@ models:
         data_tests:
           - not_null
 
+      - name: hash_html_id
+        data_type: text
+        description: >-
+          SHA-256 of the raw HTML of the detail page the skills come from,
+          its file name in the object storage.
+        data_tests:
+          - not_null
+
       - name: job_url
         data_type: text
         description: "URL of the job detail page on jobup."

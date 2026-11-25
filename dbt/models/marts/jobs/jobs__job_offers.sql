@@ -32,6 +32,7 @@ stg_jobup__job_details as (
     select
         hash_job_id,
         hash_job_detail_id,
+        hash_html_id,
         payload_format,
         job_title,
         company_name,
@@ -47,6 +48,7 @@ offers_joined_to_details as (
     select
         int_jobs__job_infos_aggregated.hash_job_id,
         stg_jobup__job_details.hash_job_detail_id,
+        stg_jobup__job_details.hash_html_id,
         int_jobs__job_infos_aggregated.job_url,
         int_jobs__job_infos_aggregated.site_name,
         coalesce(
@@ -84,6 +86,7 @@ final as (
         ---------- ids
         hash_job_id,
         hash_job_detail_id,
+        hash_html_id,
 
         ---------- strings
         job_url,

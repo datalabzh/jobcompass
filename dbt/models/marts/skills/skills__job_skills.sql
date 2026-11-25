@@ -28,7 +28,8 @@ stg_jobup__job_details as (
 
     select
         hash_job_detail_id,
-        hash_job_id
+        hash_job_id,
+        hash_html_id
     from {{ ref('stg_jobup__job_details') }}
 
 ),
@@ -49,6 +50,7 @@ skills_joined_to_offers as (
 
     select
         stg_jobup__job_details.hash_job_id,
+        stg_jobup__job_details.hash_html_id,
         int_jobs__job_infos_aggregated.job_url,
         int_skills__normalized_skills_unnested.canonical_skill,
         int_skills__normalized_skills_unnested.raw_skill,
@@ -81,6 +83,7 @@ final as (
             ['hash_job_id', 'canonical_skill']
         ) }} as hash_job_skill_id,
         hash_job_id,
+        hash_html_id,
 
         ---------- strings
         job_url,
