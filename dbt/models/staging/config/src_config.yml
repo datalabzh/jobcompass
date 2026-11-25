@@ -1,4 +1,5 @@
-# Configuration tables, the same for every target (schema config).
+# Configuration tables (schema config), one copy in each database: the dev
+# database can test another current normalizer.
 
 version: 2
 

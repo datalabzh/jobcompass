@@ -3,8 +3,8 @@ test_postgres_db_storage.py
 
 Description : tests du stockage des tables dans PostgreSQL, contre le vrai
               conteneur (docker compose -f infra/docker-compose.yml up -d --wait).
-Règles      : tous les tests écrivent dans la zone de test (raw_test), vidée avant
-              chacun ; aucun n'écrit dans raw.
+Règles      : tous les tests écrivent dans la zone de test (base _dev), vidée avant
+              chacun ; aucun n'écrit dans la base des vraies données.
               Couvre : ce qui est ajouté est relu, par source, toutes les colonnes ou
               seulement celles demandées ; un bloc JSON revient en dict ; une ligne
               réécrite ne crée pas de doublon ; un ajout ne mélange pas deux

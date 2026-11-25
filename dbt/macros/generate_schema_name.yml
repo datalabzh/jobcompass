@@ -1,0 +1,16 @@
+version: 2
+
+macros:
+  - name: generate_schema_name
+    description: >-
+      Replaces the dbt default: a model goes to the schema of its layer
+      (staging, intermediate, marts) as is, without the profile schema as
+      prefix. The test zone is the separate database jobcompass_dev (target
+      dev), with the same schema names.
+    arguments:
+      - name: custom_schema_name
+        type: string
+        description: "The +schema of the model (its layer), or none."
+      - name: node
+        type: any
+        description: "The model being built (unused)."

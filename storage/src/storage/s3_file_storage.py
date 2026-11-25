@@ -8,14 +8,14 @@ Règles      : connexion lue par la classe dans infra/.env (S3_ACCESS_KEY,
               S3_HOST pour le changer) : l'appelant ne fournit que is_test.
               Le bucket existe déjà (créé par rustfs-init).
               Clé d'un fichier = son nom (ex. raw_job_detail_html/<hash>.html),
-              précédé de test/ pour un test : supprimer test/ efface toutes les
-              données de test.
+              précédé de dev/ pour un test (zone de test, comme la base _dev de
+              Postgres) : supprimer dev/ efface toutes les données de test.
               Un objet S3 est écrit en entier ou pas du tout : pas de fichier
               temporaire.
               Adressage par chemin (endpoint/bucket/clé), et sommes de contrôle
               envoyées seulement quand elles sont exigées : réglages compatibles
               avec RustFS comme avec S3.
-              clear_test_zone supprime tout ce qui est sous test/ (tests) ; refusé
+              clear_test_zone supprime tout ce qui est sous dev/ (tests) ; refusé
               pour un stockage réel.
 """
 
@@ -29,7 +29,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from storage.infra_env import INFRA_ENV_FILE
 from storage.interfaces.i_file_storage import IFileStorage
 
-TEST_PREFIX: str = "test/"
+TEST_PREFIX: str = "dev/"
 NOT_FOUND: set[str] = {"404", "NoSuchKey", "NotFound"}
 
 
@@ -48,7 +48,7 @@ class S3Settings(BaseSettings):
 
 
 class S3FileStorage(IFileStorage):
-    """Raw files in an S3 bucket, under test/ for test runs."""
+    """Raw files in an S3 bucket, under dev/ for test runs."""
 
     def __init__(self, is_test: bool) -> None:
         super().__init__(is_test)
@@ -83,7 +83,7 @@ class S3FileStorage(IFileStorage):
         return True
 
     def clear_test_zone(self) -> None:
-        """Delete every object under test/; refused for a real storage."""
+        """Delete every object under dev/; refused for a real storage."""
         if not self.is_test:
             raise RuntimeError("clear_test_zone only empties the test zone")
         paginator: Any = self._client.get_paginator("list_objects_v2")
@@ -97,5 +97,5 @@ class S3FileStorage(IFileStorage):
                 )
 
     def _key(self, name: str) -> str:
-        """The object key of a file name: test/ first for a test storage."""
+        """The object key of a file name: dev/ first for a test storage."""
         return f"{self._prefix}{name}"

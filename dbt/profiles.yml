@@ -4,21 +4,23 @@
 #   uv run --env-file infra/.env --package jobcompass-dbt dbt ...
 # Les valeurs par défaut ne servent qu'à dbt parse (pre-commit), qui ne se
 # connecte pas.
-#   test : lit raw_test (zone de test), écrit dans analytics_test_<couche>
-#   real : lit raw, écrit dans analytics_<couche>
+#   dev  : base <POSTGRES_DB>_dev (zone de test : passages limités, tests)
+#   real : base <POSTGRES_DB> (vraies données)
+# Même schémas dans les deux bases : raw et config (lus), staging,
+# intermediate et marts (écrits, voir macros/generate_schema_name.sql).
 
 jobcompass:
-  target: test
+  target: dev
   outputs:
-    test: &postgres
+    dev: &postgres
       type: postgres
       host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
       port: "{{ env_var('POSTGRES_PORT', '5432') | as_number }}"
       user: "{{ env_var('POSTGRES_USER', 'jobcompass') }}"
       password: "{{ env_var('POSTGRES_PASSWORD', '') }}"
-      dbname: "{{ env_var('POSTGRES_DB', 'jobcompass') }}"
-      schema: analytics_test
+      dbname: "{{ env_var('POSTGRES_DB', 'jobcompass') }}_dev"
+      schema: staging
       threads: 4
     real:
       <<: *postgres
-      schema: analytics
+      dbname: "{{ env_var('POSTGRES_DB', 'jobcompass') }}"

@@ -1,13 +1,14 @@
 # Raw tables of jobup.ch (bronze), written by the Python extraction into
-# Postgres: schema raw_test (target test) or raw (target real). The tables hold
-# every site: the staging models keep source = 'jobup'.
+# Postgres, schema raw (database jobcompass_dev for target dev, jobcompass for
+# target real). The tables hold every site: the staging models keep
+# source = 'jobup'.
 
 version: 2
 
 sources:
   - name: jobup
     description: "Raw tables of the extraction, read for jobup.ch."
-    schema: "{{ 'raw_test' if target.name == 'test' else 'raw' }}"
+    schema: raw
     tables:
       - name: raw_job_info
         description: >-

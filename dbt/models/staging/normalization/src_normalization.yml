@@ -1,12 +1,12 @@
-# Raw table of the normalization (bronze), common to every site: schema
-# raw_test (target test) or raw (target real).
+# Raw table of the normalization (bronze), common to every site: schema raw
+# (database jobcompass_dev for target dev, jobcompass for target real).
 
 version: 2
 
 sources:
   - name: normalization
     description: "Raw table of the normalization."
-    schema: "{{ 'raw_test' if target.name == 'test' else 'raw' }}"
+    schema: raw
     tables:
       - name: normalized_job
         description: >-

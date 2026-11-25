@@ -6,8 +6,10 @@ Règles      : connexion lue par la classe dans infra/.env (POSTGRES_USER,
               POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_PORT ; hôte localhost par
               défaut, POSTGRES_HOST pour le changer) : l'appelant ne fournit que
               is_test.
-              Schéma raw pour un vrai passage, raw_test pour un test : les tables
-              existent déjà (infra/postgres/init), créées à l'identique dans les deux.
+              Base POSTGRES_DB pour un vrai passage, POSTGRES_DB + "_dev" pour un
+              test : deux bases à part, avec les mêmes tables (schéma raw), créées
+              par infra/postgres/init. Une donnée de test ne peut pas se mêler aux
+              vraies (Postgres ne lit pas d'une base à l'autre).
               append : une ligne par enregistrement, colonnes = champs du contrat ;
               insert ... on conflict do nothing : réécrire une ligne déjà présente
               (même contrainte unique) ne fait rien, un passage relancé ne crée pas
@@ -20,8 +22,8 @@ Règles      : connexion lue par la classe dans infra/.env (POSTGRES_USER,
               aucune concaténation de texte dans les requêtes.
               Une connexion par appel, fermée aussitôt : simple, suffisant pour nos
               volumes.
-              clear_test_zone vide toutes les tables de raw_test (tests) ; refusé
-              pour un stockage réel.
+              clear_test_zone vide toutes les tables brutes de la base _dev
+              (tests) ; refusé pour un stockage réel.
 """
 
 from collections.abc import Sequence
@@ -37,8 +39,8 @@ from contracts.components.contract_model import ContractModel
 from storage.infra_env import INFRA_ENV_FILE
 from storage.interfaces.i_db_storage import IDbStorage
 
-REAL_SCHEMA: str = "raw"
-TEST_SCHEMA: str = "raw_test"
+SCHEMA: str = "raw"
+DEV_DATABASE_SUFFIX: str = "_dev"
 
 
 class PostgresSettings(BaseSettings):
@@ -56,12 +58,15 @@ class PostgresSettings(BaseSettings):
 
 
 class PostgresDbStorage(IDbStorage):
-    """Tables in Postgres: schema raw, or raw_test for test runs."""
+    """Tables in Postgres, schema raw: real database, or the _dev one for tests."""
 
     def __init__(self, is_test: bool) -> None:
         super().__init__(is_test)
         self._settings: PostgresSettings = PostgresSettings()
-        self._schema: str = TEST_SCHEMA if is_test else REAL_SCHEMA
+        self._schema: str = SCHEMA
+        self._database: str = self._settings.db + (
+            DEV_DATABASE_SUFFIX if is_test else ""
+        )
 
     def append(self, table: str, records: Sequence[ContractModel]) -> None:
         """Insert the records; a line already present is left as it is."""
@@ -123,7 +128,7 @@ class PostgresDbStorage(IDbStorage):
             port=self._settings.port,
             user=self._settings.user,
             password=self._settings.password,
-            dbname=self._settings.db,
+            dbname=self._database,
         )
 
     def _columns_of(self, records: Sequence[ContractModel]) -> list[str]:

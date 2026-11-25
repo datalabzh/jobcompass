@@ -44,3 +44,4 @@ spikes/**/output/
 
 # Documentation (Zensical): generated site
 site/
+jobcompass.session.sql

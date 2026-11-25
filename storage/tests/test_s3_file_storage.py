@@ -3,7 +3,7 @@ test_s3_file_storage.py
 
 Description : tests du stockage des fichiers bruts dans RustFS, contre le vrai
               conteneur (docker compose -f infra/docker-compose.yml up -d --wait).
-Règles      : tous les tests écrivent sous test/, vidé avant chacun ; aucun n'écrit
+Règles      : tous les tests écrivent sous dev/, vidé avant chacun ; aucun n'écrit
               ailleurs dans le bucket.
               Couvre : un fichier est écrit et retrouvé ; la zone de test est à part ;
               clear_test_zone efface les fichiers de test et est refusé pour un

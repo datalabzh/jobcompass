@@ -15,7 +15,7 @@ Dans ce document, `<source>` désigne une source de données (un site : `jobup`�
 métier (`jobs`, `skills`…), `<entite>` l'objet décrit par un modèle (`job_details`, `clusters`…).
 
 Le projet dbt est dans `dbt/` ; la base est **PostgreSQL** ; les sources sont les tables brutes
-déposées par l'extraction et la normalisation Python (schéma `raw`, ou `raw_test` pour les tests), plus
+déposées par l'extraction et la normalisation Python (schéma `raw`), plus
 la table de configuration `config.normalizer` (ADR-0002). Les règles métier des modèles existants sont
 en partie 11.
 
@@ -32,7 +32,10 @@ en partie 11.
 | `marts` | produits finaux lus par l'analyse ou les applications | aucun | table |
 
 Bronze = les tables brutes de Postgres (sources) ; silver = staging et intermédiaires ; gold = marts.
-Schémas écrits : `analytics_<couche>` (target `real`) ou `analytics_test_<couche>` (target `test`).
+Deux bases, avec les mêmes schémas : `jobcompass` (vraies données, target `real`) et `jobcompass_dev`
+(zone de test : passages limités et tests automatiques, target `dev`). Dans chacune : `raw` et `config`
+(lus), `staging`, `intermediate` et `marts` (écrits par dbt, sans préfixe : macro
+`generate_schema_name`).
 
 ### Le double underscore
 
@@ -85,6 +88,8 @@ dbt/
         skills__job_skills.yml
   snapshots/
   macros/
+    generate_schema_name.sql        # schéma = couche, sans préfixe
+    generate_schema_name.yml
 ```
 
 - Tout en minuscules, en `snake_case`. Des underscores dans les noms de modèles, jamais de points.
@@ -513,8 +518,8 @@ models:
 
 ### Sources (`src_<source>.yml`)
 
-Les tables sources sont les tables brutes de Postgres. Le schéma dépend du target : `raw_test` (zone de
-test) pour `test`, `raw` pour `real`. Les tables brutes contiennent tous les sites : un staging de site
+Les tables sources sont les tables brutes de Postgres, schéma `raw` (la base dépend du target : `dev`
+ou `real`). Les tables brutes contiennent tous les sites : un staging de site
 garde `source = '<site>'` dès sa CTE `source`. Un test qui porte sur la donnée brute elle-même (format
 d'une colonne) se pose sur la source.
 
@@ -524,7 +529,7 @@ version: 2
 sources:
   - name: jobup
     description: "Raw tables of the extraction, read for jobup.ch."
-    schema: "{{ 'raw_test' if target.name == 'test' else 'raw' }}"
+    schema: raw
     tables:
       - name: raw_job_detail
         description: >-
@@ -558,14 +563,15 @@ variables `POSTGRES_*` de `infra/.env`, chargées par `uv run --env-file` ; les 
 uv run --package jobcompass-dbt dbt deps \
     --project-dir dbt --profiles-dir dbt
 uv run --env-file infra/.env --package jobcompass-dbt dbt build \
-    --project-dir dbt --profiles-dir dbt --target test
+    --project-dir dbt --profiles-dir dbt --target dev
 ```
 
 - `--package jobcompass-dbt` est obligatoire : depuis la racine, `uv run` seul n'installe que
   le package racine, sans dbt, et lance un autre `dbt` trouvé dans le `PATH` (dbt Fusion, par exemple).
 - `profiles.yml` est versionné dans `dbt/` (rien dans `~/.dbt/`). Deux targets :
-  - `test` : lit `raw_test`, écrit dans `analytics_test_staging`, `_intermediate`, `_marts` ;
-  - `real` : lit `raw`, écrit dans `analytics_staging`, `_intermediate`, `_marts`.
+  - `dev` : base `jobcompass_dev` (zone de test) ;
+  - `real` : base `jobcompass` (vraies données).
+  - Dans les deux : lit `raw` et `config`, écrit dans `staging`, `intermediate`, `marts`.
 - Les valeurs par défaut du profil ne servent qu'à `dbt parse` (pre-commit), qui ne se connecte pas.
 
 ### Où mettre la configuration
@@ -752,7 +758,7 @@ pre-commit ne voit que les fichiers suivis par Git : `git add` les nouveaux fich
 - [ ] SQL en minuscules, jointures explicites sans alias court, pas de `using`.
 - [ ] `.yml` : description et `data_type` sur chaque modèle et chaque colonne, `data_tests:` avec
       `arguments:`.
-- [ ] dbt lancé depuis la racine du dépôt avec `--env-file infra/.env` ; `dbt build --target test`
+- [ ] dbt lancé depuis la racine du dépôt avec `--env-file infra/.env` ; `dbt build --target dev`
       sans erreur.
 - [ ] `uv run pre-commit run --all-files` sans erreur.
 

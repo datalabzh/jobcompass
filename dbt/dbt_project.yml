@@ -1,13 +1,15 @@
 # Projet dbt de JobCompass (ADR-0002) : Python dépose le brut, dbt met en forme.
-#   sources      (bronze) : tables brutes de Postgres (raw, ou raw_test pour le
-#                           target test) et config.normalizer, jamais modifiées
+#   sources      (bronze) : tables brutes de Postgres (schéma raw) et
+#                           config.normalizer, jamais modifiées
 #   staging      (silver) : une source mise à plat, sans jointure, en vues
 #   intermediate (silver) : jointures et regroupements, en vues
 #   marts        (gold)   : produits finaux, en tables
-# Schémas écrits : analytics_<couche> (real) ou analytics_test_<couche> (test).
+# Schémas écrits : staging, intermediate, marts, dans la base jobcompass_dev
+# (target dev, zone de test) ou jobcompass (target real) ; voir
+# macros/generate_schema_name.sql.
 # Lancer depuis la racine du dépôt :
 #   uv run --env-file infra/.env --package jobcompass-dbt dbt build \
-#     --project-dir dbt --profiles-dir dbt --target test   (ou --target real)
+#     --project-dir dbt --profiles-dir dbt --target dev   (ou --target real)
 
 name: "jobcompass"
 version: "0.1.0"
