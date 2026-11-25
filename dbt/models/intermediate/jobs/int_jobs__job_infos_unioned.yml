@@ -1,0 +1,72 @@
+version: 2
+
+models:
+  - name: int_jobs__job_infos_unioned
+    description: >-
+      Jobs seen on the result pages of every site, one row per job and per
+      run: the staging of each site, put together with union all.
+    columns:
+      - name: hash_job_info_id
+        data_type: text
+        description: "Key of the sighting: hash of run_id, source and url."
+        data_tests:
+          - unique
+          - not_null
+
+      - name: hash_job_id
+        data_type: text
+        description: "Key of the job offer: hash of source and url."
+        data_tests:
+          - not_null
+
+      - name: run_id
+        data_type: text
+        description: "Id of the extraction run that saw the job."
+        data_tests:
+          - not_null
+
+      - name: job_url
+        data_type: text
+        description: "URL of the job detail page on its site."
+        data_tests:
+          - not_null
+
+      - name: site_name
+        data_type: text
+        description: "Site the job comes from, declared in config.site."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_config__sites')
+                field: site_name
+
+      - name: job_category
+        data_type: text
+        description: "Category of the result page, as named by the site."
+
+      - name: job_title
+        data_type: text
+        description: "Job title from the listing card."
+
+      - name: company_name
+        data_type: text
+        description: "Hiring company from the listing card."
+
+      - name: job_place
+        data_type: text
+        description: "Place of the job from the listing card."
+
+      - name: initial_published_at
+        data_type: timestamp with time zone
+        description: "First publication of the offer, from the listing card."
+
+      - name: published_at
+        data_type: timestamp with time zone
+        description: "Latest publication of the offer, from the listing card."
+
+      - name: seen_at
+        data_type: timestamp with time zone
+        description: "When the job was seen on the result page, in UTC."
+        data_tests:
+          - not_null

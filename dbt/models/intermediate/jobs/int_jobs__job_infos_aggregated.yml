@@ -3,9 +3,9 @@ version: 2
 models:
   - name: int_jobs__job_infos_aggregated
     description: >-
-      jobup job offers seen on result pages, one row per offer, with its
-      presence (first and last sighting, active or not) and its latest
-      listing card.
+      Job offers of every site seen on result pages, one row per offer,
+      with its presence (first and last sighting, active or not) and its
+      latest listing card.
     columns:
       - name: hash_job_id
         data_type: text
@@ -16,7 +16,7 @@ models:
 
       - name: job_url
         data_type: text
-        description: "URL of the job detail page on jobup."
+        description: "URL of the job detail page on its site."
         data_tests:
           - not_null
 
@@ -46,7 +46,7 @@ models:
         data_type: boolean
         description: >-
           True if seen in the latest completed run of at least one
-          category.
+          category of its site.
         data_tests:
           - not_null
 

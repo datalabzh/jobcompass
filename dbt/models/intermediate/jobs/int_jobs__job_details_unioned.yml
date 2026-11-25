@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: int_jobs__job_details_unioned
+    description: >-
+      Job detail pages of every site, one row per page, latest extraction
+      only: the staging of each site, put together with union all.
+    columns:
+      - name: hash_job_detail_id
+        data_type: text
+        description: >-
+          Key of the page extraction: hash of hash_html_id, scraper
+          and scraper_version.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: hash_job_id
+        data_type: text
+        description: "Key of the job offer: hash of source and url."
+        data_tests:
+          - unique
+          - not_null
+
+      - name: hash_html_id
+        data_type: text
+        description: >-
+          SHA-256 of the raw HTML page, its address in the object
+          storage.
+        data_tests:
+          - not_null
+
+      - name: job_url
+        data_type: text
+        description: "URL of the job detail page on its site."
+        data_tests:
+          - not_null
+
+      - name: site_name
+        data_type: text
+        description: "Site the page comes from, declared in config.site."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_config__sites')
+                field: site_name
+
+      - name: payload_format
+        data_type: text
+        description: "Format of the raw block: json_ld or paragraphs."
+        data_tests:
+          - not_null
+
+      - name: job_title
+        data_type: text
+        description: "Job title from the detail page; null if not found."
+
+      - name: company_name
+        data_type: text
+        description: "Hiring company from the detail page; null if not found."
+
+      - name: job_description
+        data_type: text
+        description: "Job description from the detail page."
+        data_tests:
+          - not_null
+
+      - name: posted_date
+        data_type: date
+        description: "Publication date from the detail page; null if not found."
+
+      - name: fetched_at
+        data_type: timestamp with time zone
+        description: "When the page was downloaded, in UTC."
+        data_tests:
+          - not_null

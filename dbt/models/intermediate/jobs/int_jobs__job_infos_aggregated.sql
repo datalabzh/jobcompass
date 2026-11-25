@@ -1,16 +1,17 @@
 -- ---------------------------------------------------------------------------
 -- Model Name: int_jobs__job_infos_aggregated.sql
--- Description: jobup job offers seen on result pages, one row per offer, with
---              its presence and its latest listing card.
+-- Description: job offers of every site seen on result pages, one row per
+--              offer, with its presence and its latest listing card.
 -- Rules: first_seen_at / last_seen_at = first and last sighting.
 --        is_active = seen in the latest completed run of at least one
---        category: a failed run never makes offers disappear.
+--        category of its site (a category is named by its site: two sites
+--        may use the same name): a failed run never makes offers disappear.
 --        Card values (title, company, place, dates) from the latest sighting.
 -- ---------------------------------------------------------------------------
 
 with
 
-stg_jobup__job_infos as (
+int_jobs__job_infos_unioned as (
 
     select
         hash_job_id,
@@ -23,37 +24,38 @@ stg_jobup__job_infos as (
         initial_published_at,
         published_at,
         seen_at
-    from {{ ref('stg_jobup__job_infos') }}
+    from {{ ref('int_jobs__job_infos_unioned') }}
 
 ),
 
-stg_jobup__job_info_runs as (
+int_jobs__job_info_runs_unioned as (
 
     select
         run_id,
+        site_name,
         job_category,
         started_at
-    from {{ ref('stg_jobup__job_info_runs') }}
+    from {{ ref('int_jobs__job_info_runs_unioned') }}
     where run_status = 'completed'
 
 ),
 
-{# The latest completed run of each category #}
+{# The latest completed run of each category of each site #}
 latest_completed_runs as (
 
-    select distinct on (job_category) run_id
-    from stg_jobup__job_info_runs
-    order by job_category asc, started_at desc  -- noqa: AM06
+    select distinct on (site_name, job_category) run_id
+    from int_jobs__job_info_runs_unioned
+    order by site_name asc, job_category asc, started_at desc  -- noqa: AM06
 
 ),
 
 {# Offers seen in a latest completed run are still published #}
 active_offers as (
 
-    select distinct stg_jobup__job_infos.hash_job_id
-    from stg_jobup__job_infos
+    select distinct int_jobs__job_infos_unioned.hash_job_id
+    from int_jobs__job_infos_unioned
     inner join latest_completed_runs
-        on stg_jobup__job_infos.run_id = latest_completed_runs.run_id
+        on int_jobs__job_infos_unioned.run_id = latest_completed_runs.run_id
 
 ),
 
@@ -69,7 +71,7 @@ latest_sightings as (
         job_place,
         initial_published_at,
         published_at
-    from stg_jobup__job_infos
+    from int_jobs__job_infos_unioned
     order by hash_job_id asc, seen_at desc  -- noqa: AM06
 
 ),
@@ -81,7 +83,7 @@ sightings_aggregated_to_offers as (
         count(distinct run_id) as runs_seen,
         min(seen_at) as first_seen_at,
         max(seen_at) as last_seen_at
-    from stg_jobup__job_infos
+    from int_jobs__job_infos_unioned
     group by 1
 
 ),

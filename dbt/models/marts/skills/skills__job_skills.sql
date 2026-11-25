@@ -1,6 +1,6 @@
 -- ---------------------------------------------------------------------------
 -- Model Name: skills__job_skills.sql
--- Description: skills of the jobup job offers, one row per offer and
+-- Description: skills of the job offers of every site, one row per offer and
 --              canonical skill, with the days the offer was seen.
 -- Rules: skills of the latest detail page of each offer, normalized by the
 --        current normalizer. No aggregation: counts by day, week or month
@@ -24,13 +24,13 @@ int_skills__normalized_skills_unnested as (
 
 ),
 
-stg_jobup__job_details as (
+int_jobs__job_details_unioned as (
 
     select
         hash_job_detail_id,
         hash_job_id,
         hash_html_id
-    from {{ ref('stg_jobup__job_details') }}
+    from {{ ref('int_jobs__job_details_unioned') }}
 
 ),
 
@@ -49,8 +49,8 @@ int_jobs__job_infos_aggregated as (
 skills_joined_to_offers as (
 
     select
-        stg_jobup__job_details.hash_job_id,
-        stg_jobup__job_details.hash_html_id,
+        int_jobs__job_details_unioned.hash_job_id,
+        int_jobs__job_details_unioned.hash_html_id,
         int_jobs__job_infos_aggregated.job_url,
         int_skills__normalized_skills_unnested.canonical_skill,
         int_skills__normalized_skills_unnested.raw_skill,
@@ -63,13 +63,13 @@ skills_joined_to_offers as (
         int_jobs__job_infos_aggregated.first_seen_at,
         int_jobs__job_infos_aggregated.last_seen_at
     from int_skills__normalized_skills_unnested
-    inner join stg_jobup__job_details
+    inner join int_jobs__job_details_unioned
         on
             int_skills__normalized_skills_unnested.hash_job_detail_id
-            = stg_jobup__job_details.hash_job_detail_id
+            = int_jobs__job_details_unioned.hash_job_detail_id
     inner join int_jobs__job_infos_aggregated
         on
-            stg_jobup__job_details.hash_job_id
+            int_jobs__job_details_unioned.hash_job_id
             = int_jobs__job_infos_aggregated.hash_job_id
 
 ),

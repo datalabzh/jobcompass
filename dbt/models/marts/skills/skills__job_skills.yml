@@ -3,8 +3,8 @@ version: 2
 models:
   - name: skills__job_skills
     description: >-
-      Skills of the jobup job offers, one row per offer and canonical
-      skill, with the days the offer was seen. Skills of the latest detail
+      Skills of the job offers of every site, one row per offer and
+      canonical skill, with the days the offer was seen. Skills of the latest detail
       page of each offer, normalized by the current normalizer. No
       aggregation: counts by day, week or month are computed from this
       model.
@@ -32,7 +32,7 @@ models:
 
       - name: job_url
         data_type: text
-        description: "URL of the job detail page on jobup."
+        description: "URL of the job detail page on its site."
         data_tests:
           - not_null
 
@@ -74,7 +74,7 @@ models:
         data_type: boolean
         description: >-
           True if seen in the latest completed run of at least one
-          category.
+          category of its site.
         data_tests:
           - not_null
 

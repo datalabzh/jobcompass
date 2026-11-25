@@ -1,6 +1,6 @@
 # Projet dbt de JobCompass (ADR-0002) : Python dépose le brut, dbt met en forme.
 #   sources      (bronze) : tables brutes de Postgres (schéma raw) et
-#                           config.normalizer, jamais modifiées
+#                           config.normalizer et config.site, jamais modifiées
 #   staging      (silver) : une source mise à plat, sans jointure, en vues
 #   intermediate (silver) : jointures et regroupements, en vues
 #   marts        (gold)   : produits finaux, en tables

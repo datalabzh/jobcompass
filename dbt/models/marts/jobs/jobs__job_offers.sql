@@ -1,7 +1,7 @@
 -- ---------------------------------------------------------------------------
 -- Model Name: jobs__job_offers.sql
--- Description: jobup job offers, one row per offer, with its presence and its
---              latest detail page.
+-- Description: job offers of every site, one row per offer, with its presence
+--              and its latest detail page.
 -- Rules: title, company and posted date from the JSON-LD of the detail page
 --        when there is one, else from the latest listing card.
 --        Offers never downloaded kept (left join), has_detail = false.
@@ -27,7 +27,7 @@ int_jobs__job_infos_aggregated as (
 
 ),
 
-stg_jobup__job_details as (
+int_jobs__job_details_unioned as (
 
     select
         hash_job_id,
@@ -39,7 +39,7 @@ stg_jobup__job_details as (
         job_description,
         posted_date,
         fetched_at
-    from {{ ref('stg_jobup__job_details') }}
+    from {{ ref('int_jobs__job_details_unioned') }}
 
 ),
 
@@ -47,35 +47,35 @@ offers_joined_to_details as (
 
     select
         int_jobs__job_infos_aggregated.hash_job_id,
-        stg_jobup__job_details.hash_job_detail_id,
-        stg_jobup__job_details.hash_html_id,
+        int_jobs__job_details_unioned.hash_job_detail_id,
+        int_jobs__job_details_unioned.hash_html_id,
         int_jobs__job_infos_aggregated.job_url,
         int_jobs__job_infos_aggregated.site_name,
         coalesce(
-            stg_jobup__job_details.job_title,
+            int_jobs__job_details_unioned.job_title,
             int_jobs__job_infos_aggregated.job_title
         ) as job_title,
         coalesce(
-            stg_jobup__job_details.company_name,
+            int_jobs__job_details_unioned.company_name,
             int_jobs__job_infos_aggregated.company_name
         ) as company_name,
         int_jobs__job_infos_aggregated.job_place,
-        stg_jobup__job_details.payload_format,
-        stg_jobup__job_details.job_description,
+        int_jobs__job_details_unioned.payload_format,
+        int_jobs__job_details_unioned.job_description,
         int_jobs__job_infos_aggregated.runs_seen,
         int_jobs__job_infos_aggregated.is_active,
         coalesce(
-            stg_jobup__job_details.posted_date,
+            int_jobs__job_details_unioned.posted_date,
             int_jobs__job_infos_aggregated.initial_published_at::date
         ) as posted_date,
         int_jobs__job_infos_aggregated.first_seen_at,
         int_jobs__job_infos_aggregated.last_seen_at,
-        stg_jobup__job_details.fetched_at
+        int_jobs__job_details_unioned.fetched_at
     from int_jobs__job_infos_aggregated
-    left join stg_jobup__job_details
+    left join int_jobs__job_details_unioned
         on
             int_jobs__job_infos_aggregated.hash_job_id
-            = stg_jobup__job_details.hash_job_id
+            = int_jobs__job_details_unioned.hash_job_id
 
 ),
 

@@ -71,7 +71,7 @@ dépendances. Les briques ne s'appellent pas entre elles : chacune lit ce que la
 | `storage/` | Écriture dans Postgres et dans RustFS |
 | `common/` | Contrats de données (Pydantic), noms des tables, interfaces communes |
 | `infra/` | Postgres et RustFS en conteneurs Docker |
-| `orchestration/` | Planification : script de la chaîne, heure (cron), image du conteneur `pipeline` |
+| `orchestration/` | Planification : scripts d'un site et de dbt, heures (cron), image du conteneur `pipeline` |
 | `documentation/` | Documentation : décisions d'architecture, conventions (sources dans `docs/`) |
 | `suivi/` | Suivi du projet : carte du projet, journal de bord |
 
@@ -115,9 +115,14 @@ Les options ne s'affichent qu'avec `run --help` (ex. `jobcompass-extraction run 
 
 ## Planification
 
-La chaîne peut tourner seule, chaque jour, dans le conteneur `pipeline` : supercronic y lance
-`orchestration/run_pipeline.sh` (extraction, normalisation, puis dbt) à l'heure fixée dans
-`orchestration/jobcompass.cron`. Le conteneur démarre avec les autres :
+La chaîne peut tourner seule, chaque jour, dans le conteneur `pipeline` : supercronic y lance les lignes
+de `orchestration/jobcompass.cron`, une par site puis une pour dbt :
+
+- `orchestration/run_site.sh <site>` : extraction puis normalisation d'un site (ex. `jobup`) ;
+- `orchestration/run_dbt.sh` : `dbt build`, une fois, après les sites (3 h plus tard par défaut).
+
+Chaque site a son heure et ne gêne pas les autres ; un site en retard arrive dans les marts au passage
+suivant de dbt. Le conteneur démarre avec les autres :
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d --build --wait
@@ -126,14 +131,16 @@ docker compose -f infra/docker-compose.yml logs -f pipeline     # suivre les pas
 
 | Pour… | Modifier | Puis |
 |---|---|---|
-| changer l'heure | la ligne de `orchestration/jobcompass.cron` (heure de Zurich) | `docker compose -f infra/docker-compose.yml restart pipeline` |
+| changer une heure | sa ligne dans `orchestration/jobcompass.cron` (heure de Zurich) | `docker compose -f infra/docker-compose.yml restart pipeline` |
+| collecter un nouveau site | une ligne `run_site.sh <site>` dans `orchestration/jobcompass.cron` | idem |
 | passer en production | `PIPELINE_MODE=full` dans `orchestration/.env` (modèle : `.env.example`) | idem |
 | prendre en compte une modification du code Python ou dbt | — | `docker compose -f infra/docker-compose.yml up -d --build pipeline` |
 
 Par défaut (`PIPELINE_MODE=test`), un passage planifié va en test, comme les commandes à la main.
-Le script se lance aussi à la main : `./orchestration/run_pipeline.sh` (ou
-`PIPELINE_MODE=full ./orchestration/run_pipeline.sh`). Si une catégorie échoue à l'extraction, la
-normalisation et dbt tournent quand même, et le passage finit en échec (code 1).
+Les scripts se lancent aussi à la main : `bash orchestration/run_site.sh jobup`, puis
+`bash orchestration/run_dbt.sh` (préfixer par `PIPELINE_MODE=full` pour la production). Si une catégorie
+échoue à l'extraction, la normalisation tourne quand même et le passage du site finit en échec (code 1) ;
+toute autre erreur arrête le passage du site.
 
 ## Test ou production
 

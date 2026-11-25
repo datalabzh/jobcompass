@@ -3,8 +3,8 @@ version: 2
 models:
   - name: jobs__job_offers
     description: >-
-      jobup job offers, one row per offer, with its presence and its
-      latest detail page. Title, company and posted date come from the
+      Job offers of every site, one row per offer, with its presence and
+      its latest detail page. Title, company and posted date come from the
       JSON-LD when there is one, else from the latest listing card. Offers
       never downloaded are kept (has_detail = false).
     columns:
@@ -28,7 +28,7 @@ models:
 
       - name: job_url
         data_type: text
-        description: "URL of the job detail page on jobup."
+        description: "URL of the job detail page on its site."
         data_tests:
           - not_null
 
@@ -70,7 +70,7 @@ models:
         data_type: boolean
         description: >-
           True if seen in the latest completed run of at least one
-          category.
+          category of its site.
         data_tests:
           - not_null
 

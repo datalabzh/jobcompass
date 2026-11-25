@@ -12,3 +12,7 @@ sources:
         description: >-
           One row per known normalizer and version; exactly one is current
           (is_current).
+      - name: site
+        description: >-
+          One row per site known to JobCompass: the register of the
+          sites found in the data.

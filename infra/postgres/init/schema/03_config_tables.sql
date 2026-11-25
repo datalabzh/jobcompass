@@ -9,6 +9,9 @@
 --               Au démarrage, le normaliseur courant est fake_normalization : il se
 --               comporte comme un vrai normaliseur, en attendant celui de l'équipe
 --               NLP. Sa version suit normalizer_version de FakeNormalizationUseCase.
+--               config.site = les sites connus : le registre des sites présents
+--               dans les données (site_name = nom du dossier dans extraction/ et
+--               source de ses lignes) ; dbt refuse un site absent de cette table.
 
 create table config.normalizer (
     normalizer          text        not null,
@@ -33,3 +36,13 @@ values (
     ' about thirty fixed technology keywords found in the title and description.',
     true
 );
+
+create table config.site (
+    site_name   text        primary key check (site_name ~ '^[a-z][a-z0-9_]*$'),
+    description text        not null,
+    updated_at  timestamptz not null default now()
+);
+
+-- Sites connus au démarrage.
+insert into config.site (site_name, description)
+values ('jobup', 'jobup.ch, job portal of French-speaking Switzerland.');

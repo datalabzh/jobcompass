@@ -38,3 +38,26 @@ models:
       - name: updated_at
         data_type: timestamp with time zone
         description: "Last change of the row, in UTC."
+
+  - name: stg_config__sites
+    description: >-
+      Sites known to JobCompass, one row per site. Every site_name found in
+      the data must be declared here (relationships tests of the unioned
+      models).
+    columns:
+      - name: site_name
+        data_type: text
+        description: >-
+          Name of the site: the name of its folder in extraction/ and
+          the source of its rows, e.g. jobup.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: site_description
+        data_type: text
+        description: "What the site is, in one sentence."
+
+      - name: updated_at
+        data_type: timestamp with time zone
+        description: "Last change of the row, in UTC."

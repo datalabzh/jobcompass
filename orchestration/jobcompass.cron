@@ -1,11 +1,18 @@
 # Planification de la chaîne JobCompass, lue par supercronic dans le conteneur
 # pipeline (voir orchestration/Dockerfile et infra/docker-compose.yml).
 #
-# Pour changer l'heure : modifier la ligne ci-dessous, puis
+# Une ligne par site (run_site.sh <site> : extraction puis normalisation), puis
+# une seule ligne dbt (run_dbt.sh), assez tard pour que les sites aient fini :
+# un site en retard arrive dans les marts au passage suivant.
+# Ajouter un site = une ligne run_site.sh ; le retirer = supprimer sa ligne.
+#
+# Pour changer une heure : modifier la ligne, puis
 #   docker compose -f infra/docker-compose.yml restart pipeline
 # Heure locale (TZ=Europe/Zurich dans le conteneur), pas UTC.
 # Format : minute heure jour-du-mois mois jour-de-la-semaine commande
-# Exemples : "0 6 * * *" tous les jours à 6 h ; "0 6 * * 1-5" du lundi au vendredi.
+# Exemples : "0 4 * * *" tous les jours à 4 h ; "0 4 * * 1-5" du lundi au vendredi.
 # Le mode (test ou full) se règle dans orchestration/.env, pas ici.
+# Les scripts sont lancés par bash : pas besoin de droit d'exécution.
 
-0 6 * * * /app/orchestration/run_pipeline.sh
+0 4 * * * bash /app/orchestration/run_site.sh jobup
+0 7 * * * bash /app/orchestration/run_dbt.sh

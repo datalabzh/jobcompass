@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: int_jobs__job_info_runs_unioned
+    description: >-
+      Extraction runs of the result pages of every site, one row per run of
+      a category: the staging of each site, put together with union all.
+      Failed runs are kept.
+    columns:
+      - name: run_id
+        data_type: text
+        description: "Id of the extraction run of a category."
+        data_tests:
+          - unique
+          - not_null
+
+      - name: site_name
+        data_type: text
+        description: "Site of the run, declared in config.site."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_config__sites')
+                field: site_name
+
+      - name: job_category
+        data_type: text
+        description: "Category read by the run, as named by the site."
+
+      - name: run_status
+        data_type: text
+        description: "Outcome of the run: completed or failed."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["completed", "failed"]
+
+      - name: started_at
+        data_type: timestamp with time zone
+        description: "When the run started, in UTC."
+        data_tests:
+          - not_null
+
+      - name: finished_at
+        data_type: timestamp with time zone
+        description: "When the run finished, in UTC."
