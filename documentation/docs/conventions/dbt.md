@@ -766,14 +766,18 @@ pre-commit ne voit que les fichiers suivis par Git : `git add` les nouveaux fich
 
 ## 11. Règles métier des modèles
 
-Les règles appliquées par les modèles existants, à garder en tête (et dans le README) :
+Les règles appliquées par les modèles existants, à garder en tête (détaillées pour tous dans
+[Règles métier](../architecture/regles-metier.md)) :
 
 - **Une offre** = (`source`, `url`), clé `hash_job_id`. Elle n'est téléchargée qu'une fois ; on ne suit
   pas ses modifications.
 - **Présence** (`int_jobs__job_infos_aggregated`) : `first_seen_at` / `last_seen_at` = première et
   dernière apparition dans les listes. `is_active` = vue dans le **dernier passage terminé**
-  (`completed`) d'au moins une de ses catégories : un passage en échec ne fait jamais disparaître
-  d'offres.
+  (`completed`) d'au moins une de ses catégories, **par site** (`site_name`, `job_category`) : un
+  passage en échec ne fait jamais disparaître d'offres.
+- **Plusieurs sites** : un staging par site, aux colonnes de sortie identiques, réunis par les modèles
+  `int_jobs__*_unioned` (un CTE par site, `union all`) ; toute la logique en aval est écrite une seule
+  fois. Chaque `site_name` doit exister dans `config.site` (test `relationships`).
 - **Dernière extraction d'une page** (`stg_jobup__job_details`) : la plus haute `scraper_version`,
   **comparée nombre par nombre** (`string_to_array(scraper_version, '.')::int[]`, `0.10.0` après
   `0.9.0`), puis le `fetched_at` le plus récent. Les versions s'écrivent toujours `x.y.z`, chiffres

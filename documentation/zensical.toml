@@ -8,3 +8,44 @@
 [project]
 site_name = "JobCompass"
 site_description = "Analyse du marché de l'emploi en Suisse romande par clusters de compétences"
+
+# Menu : une nouvelle page s'ajoute ici, à sa place.
+nav = [
+  { "Accueil" = "index.md" },
+  { "Prise en main" = [
+    { "Installation" = "prise-en-main/installation.md" },
+    { "Lancer la chaîne" = "prise-en-main/lancer-la-chaine.md" },
+    { "Planification" = "prise-en-main/planification.md" },
+  ] },
+  { "Guides" = [
+    { "Ajouter un site" = "guides/ajouter-un-site.md" },
+    { "Ajouter un normaliseur" = "guides/ajouter-un-normaliseur.md" },
+    { "Ajouter un modèle dbt" = "guides/ajouter-un-modele-dbt.md" },
+    { "Ajouter un contrat" = "guides/ajouter-un-contrat.md" },
+  ] },
+  { "Architecture" = [
+    { "Vue d'ensemble" = "architecture/vue-d-ensemble.md" },
+    { "Extraction" = "architecture/extraction.md" },
+    { "Normalisation" = "architecture/normalisation.md" },
+    { "Transformation (dbt)" = "architecture/transformation.md" },
+    { "Données" = "architecture/donnees.md" },
+    { "Test et production" = "architecture/test-et-production.md" },
+    { "Règles métier" = "architecture/regles-metier.md" },
+  ] },
+  { "Conventions" = [
+    { "Python" = "conventions/python.md" },
+    { "dbt" = "conventions/dbt.md" },
+    { "Tests" = "conventions/tests.md" },
+  ] },
+  { "Décisions (ADR)" = [
+    { "Liste des ADR" = "adr/index.md" },
+    { "0001 Périmètre de collecte" = "adr/0001-perimetre-collecte.md" },
+    { "0002 ELT, brut minimal" = "adr/0002-elt-brut-minimal-dbt.md" },
+    { "0003 Postgres et RustFS" = "adr/0003-postgres-et-rustfs.md" },
+    { "0004 Identifiants" = "adr/0004-identifiants.md" },
+    { "0005 Test et production" = "adr/0005-test-et-production.md" },
+    { "0006 Normaliseur courant" = "adr/0006-normaliseur-courant.md" },
+    { "0007 Planification" = "adr/0007-planification.md" },
+    { "0008 Plusieurs sites" = "adr/0008-plusieurs-sites.md" },
+  ] },
+]

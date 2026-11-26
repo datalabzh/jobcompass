@@ -1,6 +1,7 @@
 # ADR-0002 — ELT : brut minimal, transformations dans dbt, peu d'outils
 
-- **Statut** : Accepté
+- **Statut** : Accepté ; en partie remplacé par [ADR-0003](0003-postgres-et-rustfs.md) (stockage : Postgres
+  et RustFS au lieu de Parquet et DuckDB) et [ADR-0007](0007-planification.md) (planification)
 - **Date** : 2026-11-18
 - **Décideur** : David
 
